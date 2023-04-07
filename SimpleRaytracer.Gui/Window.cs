@@ -54,7 +54,7 @@ namespace SimpleRaytracer.Gui
 
 
             // Initialize ILGPU.
-            using var context = Context.Create(x => x.Cuda().CPU().EnableAlgorithms().Math(MathMode.Default));
+            using var context = Context.Create(x => x.Cuda().CPU()/*.EnableAlgorithms()*/);
             using var accelerator = context.GetPreferredDevice(false)
                 .CreateAccelerator(context);
 
