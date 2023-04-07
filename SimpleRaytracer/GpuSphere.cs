@@ -2,54 +2,48 @@
 
 namespace SimpleRaytracer
 {
-    public class Sphere : Transform, IHittable
+    public struct GpuSphere
     {
-        public Material Material { get; set; }
-        public float Radius { get; set; }
+        public Vector3 position;
+        public Material material;
+        public float radius;
 
-        public Sphere()
+        public GpuSphere(Vector3 position, Material material, float radius)
         {
+            this.position = position;
+            this.material = material;
+            this.radius = radius;
         }
 
-        public Sphere(Vector3 position, float radius) : base(position)
+        public bool TryGetRayHit(Ray ray, out Hit hit)
         {
-            Radius = radius;
-        }
-
-        public Sphere(Vector3 position, Quaternion rotation, float radius) : base(position, rotation)
-        {
-            Radius = radius;
-        }
-
-        public bool TryGetRayHit(Ray ray, out Hit? hit)
-        {
-            var offset = Position - ray.Origin;
+            var offset = position - ray.Origin;
             var projection = Vector3.Dot(offset, ray.Direction);
             var distanceToCenter = offset.Length();
             var distanceToIntersection = (float)Math.Sqrt(distanceToCenter * distanceToCenter - projection * projection);
 
-            if (distanceToIntersection > Radius)
+            if (distanceToIntersection > radius)
             {
-                hit = null;
+                hit = new Hit();
                 return false; // The ray doesn't intersect the sphere
             }
 
-            var distanceToHit = (float)Math.Sqrt(Radius * Radius - distanceToIntersection * distanceToIntersection);
+            var distanceToHit = (float)Math.Sqrt(radius * radius - distanceToIntersection * distanceToIntersection);
             var hitDistance1 = projection - distanceToHit;
             var hitDistance2 = projection + distanceToHit;
 
             if (hitDistance1 <= 0 && hitDistance2 <= 0)
             {
-                hit = null;
+                hit = new Hit();
                 return false; // The sphere is behind the ray's origin
             }
 
             // TODO: Subtract epsilon
             var dist = Math.Min(hitDistance1, hitDistance2) - 0.001f;
             var hitPos = ray.Origin + ray.Direction * dist;
-            var normal = Vector3.Normalize(hitPos - Position);
+            var normal = Vector3.Normalize(hitPos - position);
 
-            hit = new Hit(Material, hitPos, normal, dist);
+            hit = new Hit(material, hitPos, normal, dist);
 
             return true; // The ray intersects the sphere
         }
