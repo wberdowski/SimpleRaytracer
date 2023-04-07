@@ -7,7 +7,7 @@ namespace SimpleRaytracer.Gui
 {
     public partial class Window : Form
     {
-        private Size outputResolution = new(600, 600);
+        private Size outputResolution = new(800, 800);
         private Scene scene;
         private Raytracer raytracer;
 
@@ -51,9 +51,6 @@ namespace SimpleRaytracer.Gui
             scene.Objects.Add(sun);
             scene.Objects.Add(sphere);
             scene.Objects.Add(ground);
-
-
-
 
 
             // Initialize ILGPU.

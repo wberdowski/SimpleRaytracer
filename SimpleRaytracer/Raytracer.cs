@@ -1,7 +1,5 @@
 ﻿using FastBitmapLib;
 using ILGPU;
-using ILGPU.Algorithms;
-using ILGPU.IR.Types;
 using ILGPU.Runtime;
 using System.Drawing;
 using System.Numerics;
@@ -34,7 +32,7 @@ namespace SimpleRaytracer
 
         public Bitmap Raytrace()
         {
-            var sampleCount = 1;
+            var sampleCount = 50;
             var bounces = 5;
             var cam = Scene.Camera;
 
@@ -127,10 +125,11 @@ namespace SimpleRaytracer
             output[idx] = pixelColor;
         }
 
-        public static Hit GetClosestHit(ArrayView<GpuSphere> objects, Ray ray)
+        public static bool TryGetClosestHit(ArrayView<GpuSphere> objects, Ray ray, out Hit closestHit)
         {
+            closestHit = default;
+            bool didHit = false;
             float minDist = float.MaxValue;
-            Hit closestHit = new Hit();
 
             for (int i = 0; i < objects.Length; i++)
             {
@@ -138,10 +137,10 @@ namespace SimpleRaytracer
                 {
                     closestHit = hit;
                     minDist = hit.distance;
+                    didHit = true;
                 }
             }
-
-            return closestHit;
+            return didHit;
         }
 
         private static Vector3 TraceBounces(Ray ray, ArrayView<GpuSphere> objects, int bounces, int seed)
@@ -151,9 +150,7 @@ namespace SimpleRaytracer
 
             for (int i = 0; i <= bounces; i++)
             {
-                var closestHit = GetClosestHit(objects, ray);
-
-                if (closestHit.distance == float.MaxValue)
+                if (!TryGetClosestHit(objects, ray, out var closestHit))
                 {
                     break;
                 }
