@@ -4,31 +4,41 @@ namespace SimpleRaytracer
 {
     public struct RenderParams
     {
-        public int resolutionX;
-        public int resolutionY;
-        public int samples;
-        public int bounces;
-        public Vector3 bottomLeft;
-        public float planeWidth;
-        public float planeHeight;
-        public Vector3 cameraPosition;
-        public Vector3 cameraRight;
-        public Vector3 cameraUp;
-        public Vector3 cameraForward;
+        public int ResolutionX { get; set; }
+        public int ResolutionY { get; set; }
+        public int Samples { get; set; }
+        public int Bounces { get; set; }
+        public Vector3 BottomLeft { get; }
+        public float PlaneWidth { get; }
+        public float PlaneHeight { get; }
+        public Vector3 CameraPosition { get; }
+        public Vector3 CameraRight { get; }
+        public Vector3 CameraUp { get; }
+        public Vector3 CameraForward { get; }
 
-        public RenderParams(int resolutionX, int resolutionY, int samples, int bounces, Vector3 bottomLeft, float planeWidth, float planeHeight, Vector3 cameraPosition, Vector3 cameraRight, Vector3 cameraUp, Vector3 cameraForward)
+        public RenderParams(int resolutionX, int resolutionY, int samples, int bounces, Scene scene)
         {
-            this.resolutionX = resolutionX;
-            this.resolutionY = resolutionY;
-            this.samples = samples;
-            this.bounces = bounces;
-            this.bottomLeft = bottomLeft;
-            this.planeWidth = planeWidth;
-            this.planeHeight = planeHeight;
-            this.cameraPosition = cameraPosition;
-            this.cameraRight = cameraRight;
-            this.cameraUp = cameraUp;
-            this.cameraForward = cameraForward;
+            if (scene is null)
+            {
+                throw new ArgumentNullException(nameof(scene));
+            }
+
+            if (scene.Camera is null)
+            {
+                throw new ArgumentNullException(nameof(scene));
+            }
+
+            ResolutionX = resolutionX;
+            ResolutionY = resolutionY;
+            Samples = samples;
+            Bounces = bounces;
+            BottomLeft = scene.Camera.BottomLeft;
+            PlaneWidth = scene.Camera.PlaneWidth;
+            PlaneHeight = scene.Camera.PlaneHeight;
+            CameraPosition = scene.Camera.Position;
+            CameraRight = scene.Camera.Right;
+            CameraUp = scene.Camera.Up;
+            CameraForward = scene.Camera.Forward;
         }
     }
 }

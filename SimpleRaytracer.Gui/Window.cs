@@ -1,13 +1,14 @@
 using ILGPU;
 using ILGPU.Runtime.CPU;
 using ILGPU.Runtime.Cuda;
+using System.Diagnostics;
 using System.Numerics;
 
 namespace SimpleRaytracer.Gui
 {
     public partial class Window : Form
     {
-        private Size outputResolution = new(1024, 1024);
+        private Size outputResolution = new(800, 800);
         private Scene scene;
         private Raytracer raytracer;
 
@@ -29,9 +30,9 @@ namespace SimpleRaytracer.Gui
             camera.Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitX, -30 * (float)(Math.PI / 180));
 
             var sun = new GpuSphere(
-                new Vector3(-2, -2, -1),
+                new Vector3(-4, -4, -1),
                 new Material(new Vector3(0, 0, 0), new Vector3(1, 1, 0.9f) * 10),
-                1f
+                2f
             );
 
             var sphere = new GpuSphere(
@@ -41,35 +42,52 @@ namespace SimpleRaytracer.Gui
             );
 
             var ground = new GpuSphere(
-                new Vector3(0, 100 + 1, 0),
+                new Vector3(0, 1000 + 1, 0),
                 new Material(new Vector3(1, 1, 1)),
-                100
+                1000
             );
 
             scene = new Scene();
             scene.Camera = camera;
-            scene.Objects.Add(sun);
-            scene.Objects.Add(sphere);
-            scene.Objects.Add(ground);
+            scene.Objects = new GpuSphere[]
+            {
+                sun,
+                sphere,
+                ground
+            };
 
+            Task.Run(() =>
+            {
+                using var context = Context.Create(x => x.Cuda().CPU().EnableAlgorithms());
 
-            // Initialize ILGPU.
-            using var context = Context.Create(x => x.Cuda().CPU()/*.EnableAlgorithms()*/);
-            using var accelerator = context.GetPreferredDevice(false)
-                .CreateAccelerator(context);
+                using var accelerator = context.GetPreferredDevice(false)
+                    .CreateAccelerator(context);
 
-            Console.WriteLine($"Running on: {accelerator.Name}");
+                Debug.WriteLine($"Running on: {accelerator.Name}");
 
-            raytracer = new Raytracer(scene, outputResolution, accelerator);
+                raytracer = new Raytracer(scene, outputResolution, accelerator);
 
-            Render();
-        }
+                Debug.WriteLine("Start render");
 
-        private void Render()
-        {
-            var bmp = raytracer.Raytrace();
+                var sw = Stopwatch.StartNew();
+                raytracer.Render(1000, 10);
 
-            pictureBox.Image = bmp;
+                var bmp = raytracer.WaitForResult();
+                sw.Stop();
+
+                Debug.WriteLine($"Wait for result: {sw.Elapsed.TotalMilliseconds} ms");
+
+                Debug.WriteLine("Done");
+
+                bmp.Save("render.png");
+
+                Debug.WriteLine("Saved");
+
+                Invoke(() =>
+                {
+                    pictureBox.Image = bmp;
+                });
+            });
         }
     }
 }

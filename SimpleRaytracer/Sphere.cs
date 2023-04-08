@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using ILGPU.Algorithms;
+using System.Numerics;
 
 namespace SimpleRaytracer
 {
@@ -26,7 +27,7 @@ namespace SimpleRaytracer
             var offset = Position - ray.Origin;
             var projection = Vector3.Dot(offset, ray.Direction);
             var distanceToCenter = offset.Length();
-            var distanceToIntersection = (float)Math.Sqrt(distanceToCenter * distanceToCenter - projection * projection);
+            var distanceToIntersection = (float)XMath.Sqrt(distanceToCenter * distanceToCenter - projection * projection);
 
             if (distanceToIntersection > Radius)
             {
@@ -34,7 +35,7 @@ namespace SimpleRaytracer
                 return false; // The ray doesn't intersect the sphere
             }
 
-            var distanceToHit = (float)Math.Sqrt(Radius * Radius - distanceToIntersection * distanceToIntersection);
+            var distanceToHit = (float)XMath.Sqrt(Radius * Radius - distanceToIntersection * distanceToIntersection);
             var hitDistance1 = projection - distanceToHit;
             var hitDistance2 = projection + distanceToHit;
 
@@ -45,7 +46,7 @@ namespace SimpleRaytracer
             }
 
             // TODO: Subtract epsilon
-            var dist = Math.Min(hitDistance1, hitDistance2) - 0.001f;
+            var dist = XMath.Min(hitDistance1, hitDistance2) - 0.001f;
             var hitPos = ray.Origin + ray.Direction * dist;
             var normal = Vector3.Normalize(hitPos - Position);
 

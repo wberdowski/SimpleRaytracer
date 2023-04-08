@@ -7,8 +7,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SimpleRaytracer", "SimpleRa
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SimpleRaytracer.Gui", "SimpleRaytracer.Gui\SimpleRaytracer.Gui.csproj", "{0A180C54-F905-4BF6-AC6B-89BDF6CBE707}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RandTest", "RandTest\RandTest.csproj", "{5E581F28-8B29-4800-AF8B-F5BE796DA069}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{13CE8C81-3A78-437C-8382-108DBDC88824}"
 	ProjectSection(SolutionItems) = preProject
 		README.md = README.md
@@ -28,10 +26,6 @@ Global
 		{0A180C54-F905-4BF6-AC6B-89BDF6CBE707}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0A180C54-F905-4BF6-AC6B-89BDF6CBE707}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0A180C54-F905-4BF6-AC6B-89BDF6CBE707}.Release|Any CPU.Build.0 = Release|Any CPU
-		{5E581F28-8B29-4800-AF8B-F5BE796DA069}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{5E581F28-8B29-4800-AF8B-F5BE796DA069}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{5E581F28-8B29-4800-AF8B-F5BE796DA069}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{5E581F28-8B29-4800-AF8B-F5BE796DA069}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
