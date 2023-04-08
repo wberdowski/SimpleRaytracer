@@ -2,7 +2,6 @@
 using ILGPU.Algorithms;
 using ILGPU.Algorithms.Random;
 using ILGPU.Runtime;
-using ILGPU.Runtime.Cuda;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Numerics;
@@ -12,6 +11,8 @@ namespace SimpleRaytracer
 {
     public unsafe class Raytracer : IDisposable
     {
+        public Accelerator Accelerator => _accelerator;
+
         private Context _context;
         private Accelerator _accelerator;
         private Action<Index1D, ArrayView1D<ColorDataBgr, Stride1D.Dense>, ArrayView1D<GpuSphere, Stride1D.Dense>, RenderParams, ulong> _loadedKernel;
@@ -29,7 +30,8 @@ namespace SimpleRaytracer
 
         private void InitializeAccelerator()
         {
-            _context = Context.Create(x => x.Cuda().EnableAlgorithms());
+            _context = Context.Create(b => b.Default().EnableAlgorithms());
+
             _accelerator = _context.GetPreferredDevice(false)
                 .CreateAccelerator(_context);
 
@@ -77,7 +79,6 @@ namespace SimpleRaytracer
 
             bmp.UnlockBits(bmpData);
 
-            _frameBuffer?.Dispose();
             _sceneBuffer?.Dispose();
 
             return bmp;
@@ -213,6 +214,7 @@ namespace SimpleRaytracer
 
         public void Dispose()
         {
+            _frameBuffer?.Dispose();
             _accelerator.Dispose();
             _context.Dispose();
         }
