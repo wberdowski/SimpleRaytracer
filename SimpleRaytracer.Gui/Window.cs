@@ -1,18 +1,17 @@
-using ILGPU;
-using ILGPU.Runtime;
-using ILGPU.Runtime.CPU;
-using ILGPU.Runtime.Cuda;
-using ILGPU.Runtime.OpenCL;
 using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.InteropServices;
 
 namespace SimpleRaytracer.Gui
 {
     public partial class Window : Form
     {
-        private Size outputResolution = new(1800, 600);
+        private Size outputResolution = new(600, 600);
         private Scene scene;
         private Raytracer raytracer;
+
+        [DllImport("user32.dll")]
+        public static extern short GetAsyncKeyState(int key);
 
         public Window()
         {
@@ -27,7 +26,7 @@ namespace SimpleRaytracer.Gui
 
         private void Window_Load(object sender, EventArgs e)
         {
-            var camera = new Camera(new Vector3(0, -2, -4), 0.1f, 40, outputResolution.Width / (float)outputResolution.Height);
+            var camera = new Camera(new Vector3(0, -2, -4), 0.1f, 60, outputResolution.Width / (float)outputResolution.Height);
 
             camera.Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitX, -28 * (float)(Math.PI / 180));
 
@@ -84,31 +83,86 @@ namespace SimpleRaytracer.Gui
                 ground
             };
 
+            float pitch = 0;
+            float yaw = 0;
+            DateTime lastTime = DateTime.Now;
+
             Task.Run(() =>
             {
-
                 raytracer = new Raytracer(outputResolution);
 
-                Debug.WriteLine("Start render");
+                Debug.WriteLine($"Start render {raytracer.Accelerator.Name}");
 
-                var sw = Stopwatch.StartNew();
-                raytracer.Render(scene, 10000, 10);
-
-                var bmp = raytracer.WaitForResult();
-                sw.Stop();
-
-                Debug.WriteLine($"Wait for result: {sw.Elapsed.TotalMilliseconds} ms");
-
-                Debug.WriteLine("Done");
-
-                bmp.Save("render.png");
-
-                Debug.WriteLine("Saved");
-
-                Invoke(() =>
+                while (true)
                 {
-                    pictureBox.Image = bmp;
-                });
+                    var sw = Stopwatch.StartNew();
+
+                    var currentTime = DateTime.Now;
+                    var deltaTime = (float)(currentTime - lastTime).TotalMilliseconds / 100f;
+                    lastTime = currentTime;
+
+                    if ((GetAsyncKeyState(0x57) & 0x8000) > 0)
+                    {
+                        scene.Camera.Position = scene.Camera.Position + scene.Camera.Forward * 0.5f * deltaTime;
+                    }
+
+                    if ((GetAsyncKeyState(0x53) & 0x8000) > 0)
+                    {
+                        scene.Camera.Position = scene.Camera.Position - scene.Camera.Forward * 0.5f * deltaTime;
+                    }
+
+                    if ((GetAsyncKeyState(0x44) & 0x8000) > 0)
+                    {
+                        scene.Camera.Position = scene.Camera.Position + scene.Camera.Right * 0.5f * deltaTime;
+                    }
+
+                    if ((GetAsyncKeyState(0x41) & 0x8000) > 0)
+                    {
+                        scene.Camera.Position = scene.Camera.Position - scene.Camera.Right * 0.5f * deltaTime;
+                    }
+
+                    if ((GetAsyncKeyState(0x26) & 0x8000) > 0)
+                    {
+                        pitch += 0.2f * deltaTime;
+                    }
+
+                    if ((GetAsyncKeyState(0x28) & 0x8000) > 0)
+                    {
+                        pitch -= 0.2f * deltaTime;
+                    }
+
+                    if ((GetAsyncKeyState(0x25) & 0x8000) > 0)
+                    {
+                        yaw -= 0.2f * deltaTime;
+                    }
+
+                    if ((GetAsyncKeyState(0x27) & 0x8000) > 0)
+                    {
+                        yaw += 0.2f * deltaTime;
+                    }
+
+                    scene.Camera.Rotation = Quaternion.CreateFromYawPitchRoll(yaw, pitch, 0);
+
+                    raytracer.Render(scene, 30, 10);
+
+                    var bmp = raytracer.WaitForResult();
+                    sw.Stop();
+
+                    Debug.WriteLine($"Wait for result: {sw.Elapsed.TotalMilliseconds} ms");
+
+                    Debug.WriteLine("Done");
+
+                    //bmp.Save("render.png");
+
+                    Debug.WriteLine("Saved");
+
+                    Invoke(() =>
+                    {
+                        var old = pictureBox.Image;
+                        pictureBox.Image = bmp;
+                        old?.Dispose();
+                    });
+                }
 
                 raytracer.Dispose();
             });
