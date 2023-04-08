@@ -7,7 +7,7 @@ namespace SimpleRaytracer.Gui
 {
     public partial class Window : Form
     {
-        private Size outputResolution = new(800, 800);
+        private Size outputResolution = new(1024, 1024);
         private Scene scene;
         private Raytracer raytracer;
 
@@ -30,7 +30,7 @@ namespace SimpleRaytracer.Gui
 
             var sun = new GpuSphere(
                 new Vector3(-2, -2, -1),
-                new Material(new Vector3(0, 0, 0), new Vector3(1, 1, 0.9f) * 5),
+                new Material(new Vector3(0, 0, 0), new Vector3(1, 1, 0.9f) * 10),
                 1f
             );
 
@@ -61,6 +61,7 @@ namespace SimpleRaytracer.Gui
             Console.WriteLine($"Running on: {accelerator.Name}");
 
             raytracer = new Raytracer(scene, outputResolution, accelerator);
+
             Render();
         }
 

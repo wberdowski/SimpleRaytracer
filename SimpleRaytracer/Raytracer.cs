@@ -1,20 +1,23 @@
-﻿using FastBitmapLib;
-using ILGPU;
+﻿using ILGPU;
+using ILGPU.Algorithms;
+using ILGPU.Algorithms.Random;
 using ILGPU.Runtime;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace SimpleRaytracer
 {
-    public class Raytracer
+    public unsafe class Raytracer
     {
         public Accelerator Accelerator { get; }
         public Scene Scene { get; }
         public Size Resolution { get; }
 
-        private Action<Index2D, ArrayView2D<Vector3, Stride2D.DenseX>, ArrayView1D<GpuSphere, Stride1D.Dense>, RenderParams> _loadedKernel;
-        private MemoryBuffer2D<Vector3, Stride2D.DenseX> _frameBuffer;
-        private MemoryBuffer1D<GpuSphere, Stride1D.Dense> _sceneBuffer;
+        private readonly Action<Index1D, ArrayView1D<ColorDataBgr, Stride1D.Dense>, ArrayView1D<GpuSphere, Stride1D.Dense>, RenderParams, uint> _loadedKernel;
+        private readonly MemoryBuffer1D<ColorDataBgr, Stride1D.Dense> _frameBuffer;
+        private readonly MemoryBuffer1D<GpuSphere, Stride1D.Dense> _sceneBuffer;
 
         public Raytracer(Scene scene, Size resolution, Accelerator accelerator)
         {
@@ -24,16 +27,14 @@ namespace SimpleRaytracer
 
             // load / precompile the kernel
             _loadedKernel =
-                accelerator.LoadAutoGroupedStreamKernel<Index2D, ArrayView2D<Vector3, Stride2D.DenseX>, ArrayView1D<GpuSphere, Stride1D.Dense>, RenderParams>(Kernel);
+                accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<ColorDataBgr, Stride1D.Dense>, ArrayView1D<GpuSphere, Stride1D.Dense>, RenderParams, uint>(Kernel);
 
-            _frameBuffer = accelerator.Allocate2DDenseX<Vector3>(new LongIndex2D(resolution.Width, resolution.Height));
+            _frameBuffer = accelerator.Allocate1D<ColorDataBgr>(resolution.Width * resolution.Height);
             _sceneBuffer = accelerator.Allocate1D<GpuSphere>(scene.Objects.Count);
         }
 
-        public Bitmap Raytrace()
+        public Bitmap Raytrace(int sampleCount = 1000, int bounceCount = 5)
         {
-            var sampleCount = 50;
-            var bounces = 5;
             var cam = Scene.Camera;
 
             var planeHeight = cam.NearClipPlane * (float)Math.Tan(cam.FieldOfView * 0.5f * (Math.PI / 180)) * 2;
@@ -45,7 +46,7 @@ namespace SimpleRaytracer
                 Resolution.Width,
                 Resolution.Height,
                 sampleCount,
-                bounces,
+                bounceCount,
                 bottomLeft,
                 planeWidth,
                 planeHeight,
@@ -55,60 +56,50 @@ namespace SimpleRaytracer
                 cam.Forward
             );
 
+            var random = new Random();
+
             _sceneBuffer.CopyFromCPU(Scene.Objects.ToArray());
 
-            _loadedKernel(new Index2D(Resolution.Width, Resolution.Height), _frameBuffer.View, _sceneBuffer, renderParams);
+            _loadedKernel(Resolution.Width * Resolution.Height, _frameBuffer.View, _sceneBuffer, renderParams, (uint)random.Next());
 
-            Accelerator.Synchronize();
-
-            var outputBuffer = _frameBuffer.GetAsArray2D();
+            var outputBuffer = _frameBuffer.GetAsArray1D();
 
             _frameBuffer.Dispose();
 
             var bmp = new Bitmap(Resolution.Width, Resolution.Height);
+            var bmpSizeBytes = Resolution.Width * Resolution.Height * sizeof(byte) * 3;
 
-            var scale = 1f / sampleCount;
+            var bmpData = bmp.LockBits(new Rectangle(0, 0, Resolution.Width, Resolution.Height), ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
+            var ptrDst = bmpData.Scan0.ToPointer();
 
-            using (var fastBitmap = bmp.FastLock())
+            fixed (void* ptrSrc = &outputBuffer[0])
             {
-                for (int by = 0; by < Resolution.Height; by++)
-                {
-                    for (int bx = 0; bx < Resolution.Width; bx++)
-                    {
-                        outputBuffer[bx, by] = new Vector3(
-                            (float)Math.Sqrt(outputBuffer[bx, by].X * scale),
-                            (float)Math.Sqrt(outputBuffer[bx, by].Y * scale),
-                            (float)Math.Sqrt(outputBuffer[bx, by].Z * scale)
-                        );
-
-                        var outColor = Color.FromArgb(
-                            (int)Math.Clamp(outputBuffer[bx, by].X * 255, 0, 255),
-                            (int)Math.Clamp(outputBuffer[bx, by].Y * 255, 0, 255),
-                            (int)Math.Clamp(outputBuffer[bx, by].Z * 255, 0, 255)
-                        );
-
-                        fastBitmap.SetPixel(bx, by, outColor);
-                    }
-                }
+                Unsafe.CopyBlock(ptrDst, ptrSrc, (uint)bmpSizeBytes);
             }
+
+            bmp.UnlockBits(bmpData);
 
             return bmp;
         }
 
-        public static void Kernel(Index2D idx, ArrayView2D<Vector3, Stride2D.DenseX> output, ArrayView1D<GpuSphere, Stride1D.Dense> objects, RenderParams renderParams)
+        public static void Kernel(Index1D index, ArrayView1D<ColorDataBgr, Stride1D.Dense> output, ArrayView1D<GpuSphere, Stride1D.Dense> objects, RenderParams renderParams, uint rngSeed)
         {
-            var normalizedX = idx.X / (renderParams.resolutionX - 1f);
-            var normalizedY = idx.Y / (renderParams.resolutionY - 1f);
+            var indexX = index % renderParams.resolutionX;
+            var indexY = index / renderParams.resolutionX;
+
+            var normalizedX = indexX / (renderParams.resolutionX - 1f);
+            var normalizedY = indexY / (renderParams.resolutionY - 1f);
 
             Vector3 pixelColor = Vector3.Zero;
+
+            var rng1 = new XorShift64Star((uint)indexX * (uint)indexY + (uint)indexX + rngSeed);
+            var rng = new XorShift128(rng1.NextUInt(), rng1.NextUInt(), rng1.NextUInt(), rng1.NextUInt());
 
             for (int i = 0; i < renderParams.samples; i++)
             {
                 var local = renderParams.bottomLeft + new Vector3(
-                    //renderParams.planeWidth * normalizedX + ((GenerateRandomNumber(idx.X * idx.Y + idx.Y, -50, 50) / 100f) / renderParams.resolutionX / 10),  // TODO: / 10 ?
-                    //renderParams.planeWidth * normalizedX + ((GenerateRandomNumber(idx.X * idx.Y + idx.Y, -50, 50) / 100f) / renderParams.resolutionX / 10),  // TODO: / 10 ?
-                    renderParams.planeWidth * normalizedX,
-                    renderParams.planeHeight * normalizedY,
+                    renderParams.planeWidth * normalizedX + (NormalizedRandomFloat(ref rng) / 10000),
+                    renderParams.planeHeight * normalizedY + (NormalizedRandomFloat(ref rng) / 10000),
                     0);
 
                 var position = renderParams.cameraPosition +
@@ -119,13 +110,29 @@ namespace SimpleRaytracer
                 var dir = Vector3.Normalize(position - renderParams.cameraPosition);
                 var rayFromCamera = new Ray(renderParams.cameraPosition, dir);
 
-                pixelColor += TraceBounces(rayFromCamera, objects, renderParams.bounces, idx.X * idx.Y + idx.Y);
+                pixelColor += TraceBounces(rayFromCamera, objects, renderParams.bounces, ref rng);
             }
 
-            output[idx] = pixelColor;
+            //pixelColor = new Vector3(rng.NextFloat(), rng.NextFloat(), rng.NextFloat()) * renderParams.samples;
+
+            var scale = 1f / renderParams.samples;
+
+            var c = new Vector3(
+                (float)XMath.Sqrt(pixelColor.X * scale),
+                (float)XMath.Sqrt(pixelColor.Y * scale),
+                (float)XMath.Sqrt(pixelColor.Z * scale)
+            );
+
+            var outColor = new ColorDataBgr(
+                (byte)XMath.Clamp(c.X * 255, 0, 255),
+                (byte)XMath.Clamp(c.Y * 255, 0, 255),
+                (byte)XMath.Clamp(c.Z * 255, 0, 255)
+            );
+
+            output[index] = outColor;
         }
 
-        public static bool TryGetClosestHit(ArrayView<GpuSphere> objects, Ray ray, out Hit closestHit)
+        public static bool TryGetClosestHit(ArrayView1D<GpuSphere, Stride1D.Dense> objects, Ray ray, out Hit closestHit)
         {
             closestHit = default;
             bool didHit = false;
@@ -143,7 +150,7 @@ namespace SimpleRaytracer
             return didHit;
         }
 
-        private static Vector3 TraceBounces(Ray ray, ArrayView<GpuSphere> objects, int bounces, int seed)
+        private static Vector3 TraceBounces(Ray ray, ArrayView1D<GpuSphere, Stride1D.Dense> objects, int bounces, ref XorShift128 rngView)
         {
             var rayColor = Vector3.One;
             var incomingLight = Vector3.Zero;
@@ -155,14 +162,14 @@ namespace SimpleRaytracer
                     break;
                 }
 
-                var randomVectorDir = RandomNormalizedVector3(seed);
+                var diffuseVecDir = RandomNormalizedVector3(ref rngView);
 
-                if (Vector3.Dot(randomVectorDir, closestHit.normal) < 0f)
+                if (Vector3.Dot(diffuseVecDir, closestHit.normal) < 0f)
                 {
-                    randomVectorDir = -randomVectorDir;
+                    diffuseVecDir = -diffuseVecDir;
                 }
 
-                ray = new Ray(closestHit.position, randomVectorDir);
+                ray = new Ray(closestHit.position, diffuseVecDir);
 
                 var emmitedLight = closestHit.material.Emission;
                 incomingLight += emmitedLight * rayColor;
@@ -170,89 +177,22 @@ namespace SimpleRaytracer
             }
 
             return incomingLight;
-
-            //// Diffuse
-            //var randomVectorDir = RandomNormalizedVector3();
-
-            //// check if the random vector is in the same hemisphere as the normal
-            //if (Vector3.Dot(randomVectorDir, closestHit.Value.Normal) < 0f)
-            //{
-            //    randomVectorDir = -randomVectorDir;
-            //}
-
-            //var diffuseRay = new Ray(closestHit.Value.Position, randomVectorDir);
-
-            //Hit? closestHit2 = scene.GetClosestHit(diffuseRay);
-
-            //if (closestHit2 == null)
-            //{
-            //    rayColor += GetAmbientColor();
-            //    return;
-            //}
-
-            //if (closestHit2.Value.Target.Material.Emission != Vector3.Zero)
-            //{
-            //    rayColor += closestHit2.Value.Target.Material.Emission * closestHit.Value.Target.Material.Albedo;
-            //}
-
-            // Specular
-            //var reflectionRay = new Ray(closestHit.Value.Position, Vector3.Reflect(ray.Direction, closestHit.Value.Normal));
-
-            //foreach (var obj in world.Objects.Where(x => x.IsLightSource))
-            //{
-            //    if (obj.TryGetRayHit(reflectionRay, out var lightHit))
-            //    {
-            //        bmp.SetPixel(x, y, Color.White);
-            //    } else
-            //    {
-            //        bmp.SetPixel(x, y, Color.Black);
-            //    }
-            //}
         }
 
-        //private float RandomGaussian()
-        //{
-        //    var theta = 2 * Math.PI * (_random.Next() - int.MaxValue/2);
-        //    var rho = Math.Sqrt(-2 * Math.Log(_random.Next() - int.MaxValue / 2));
-        //    return (float)(rho * Math.Cos(theta));
-        //}
-
-        public static int GenerateRandomNumber(int seed, int minValue, int maxValue)
+        private static Vector3 RandomNormalizedVector3(ref XorShift128 rngView)
         {
-            uint x = (uint)seed;
-            x ^= x << 13;
-            x ^= x >> 17;
-            x ^= x << 5;
-            int randNum = (int)(x % (uint)(maxValue - minValue + 1) + (uint)minValue);
-            return randNum;
-        }
+            var halfIntMax = int.MaxValue / 2;
 
-        private static Vector3 RandomNormalizedVector3(int seed)
-        {
-            return Vector3.Normalize(new Vector3(
-                GenerateRandomNumber(seed + 1, -1000, 1000),
-                GenerateRandomNumber(seed + 2, -1000, 1000),
-                GenerateRandomNumber(seed + 3, -1000, 1000)
+            return Vector3.Normalize(new(
+                rngView.Next() - halfIntMax,
+                rngView.Next() - halfIntMax,
+                rngView.Next() - halfIntMax
             ));
         }
 
-        //private Vector3 RandomVec3(float min, float max)
-        //{
-        //    return new Vector3(
-        //        _random.NextSingle() * (max - min) + min,
-        //        _random.NextSingle() * (max - min) + min,
-        //        _random.NextSingle() * (max - min) + min
-        //        );
-        //}
-
-        //private Vector3 RandomInUnitSphere()
-        //{
-        //    while (true)
-        //    {
-        //        var p = RandomVec3(-1, 1);
-        //        if (p.LengthSquared() >= 1) continue;
-        //        return p;
-        //    }
-        //}
+        private static float NormalizedRandomFloat(ref XorShift128 rngView)
+        {
+            return rngView.NextFloat() * 2 - 1f;
+        }
     }
 }
