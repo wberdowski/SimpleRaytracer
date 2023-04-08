@@ -1,5 +1,8 @@
 # SimpleRaytracer (WIP)
 
-![image](https://user-images.githubusercontent.com/10144015/230724111-6a539411-ba5f-4ff2-9f52-122ad3835cb7.png)
+![render](https://user-images.githubusercontent.com/10144015/230739361-bc8037c0-44b3-4881-80f8-69d11ff118c4.png)
 
-![image](https://user-images.githubusercontent.com/10144015/230732567-9fe192bc-0cb4-432d-b439-c51a6fd7c12d.png)
+# References
+- [Sebastian Lague](https://github.com/SebLague) (2023) - "[Coding Adventure: Ray Tracing](https://youtu.be/Qz0KTGYJtUk)"
+- [Peter Shirley](https://github.com/petershirley) (2020) - "[Ray Tracing in One Weekend](https://raytracing.github.io/books/RayTracingInOneWeekend.html)"
+- [ILGPU](https://github.com/m4rs-mt/ILGPU/) (2023) - "[ILGPU Documentation](https://ilgpu.net/docs/)"
