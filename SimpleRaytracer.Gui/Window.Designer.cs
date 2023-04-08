@@ -28,34 +28,33 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.pictureBox = new System.Windows.Forms.PictureBox();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox)).BeginInit();
-            this.SuspendLayout();
+            pictureBox = new PictureBox();
+            ((System.ComponentModel.ISupportInitialize)pictureBox).BeginInit();
+            SuspendLayout();
             // 
             // pictureBox
             // 
-            this.pictureBox.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.pictureBox.Location = new System.Drawing.Point(0, 0);
-            this.pictureBox.Name = "pictureBox";
-            this.pictureBox.Size = new System.Drawing.Size(315, 278);
-            this.pictureBox.SizeMode = System.Windows.Forms.PictureBoxSizeMode.CenterImage;
-            this.pictureBox.TabIndex = 0;
-            this.pictureBox.TabStop = false;
+            pictureBox.Dock = DockStyle.Fill;
+            pictureBox.Location = new Point(0, 0);
+            pictureBox.Name = "pictureBox";
+            pictureBox.Size = new Size(315, 278);
+            pictureBox.SizeMode = PictureBoxSizeMode.CenterImage;
+            pictureBox.TabIndex = 0;
+            pictureBox.TabStop = false;
             // 
             // Window
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.BackColor = System.Drawing.Color.Fuchsia;
-            this.ClientSize = new System.Drawing.Size(315, 278);
-            this.Controls.Add(this.pictureBox);
-            this.Name = "Window";
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "SimpleRaytracer GUI";
-            this.Load += new System.EventHandler(this.Window_Load);
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox)).EndInit();
-            this.ResumeLayout(false);
-
+            AutoScaleDimensions = new SizeF(7F, 15F);
+            AutoScaleMode = AutoScaleMode.Font;
+            BackColor = Color.Fuchsia;
+            ClientSize = new Size(315, 278);
+            Controls.Add(pictureBox);
+            Name = "Window";
+            StartPosition = FormStartPosition.CenterScreen;
+            Text = "SimpleRaytracer GUI";
+            Load += Window_Load;
+            ((System.ComponentModel.ISupportInitialize)pictureBox).EndInit();
+            ResumeLayout(false);
         }
 
         #endregion
