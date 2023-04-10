@@ -26,7 +26,7 @@ namespace SimpleRaytracer.Gui
 
         private void Window_Load(object sender, EventArgs e)
         {
-            var camera = new Camera(new Vector3(-1, 1.3f, 4), 0.1f, 25, outputResolution.Width / (float)outputResolution.Height);
+            var camera = new Camera(new Vector3(-1, 2.3f, 4), 0.1f, 35, outputResolution.Width / (float)outputResolution.Height);
 
             var sun = new GpuSphere(
                 new Vector3(-10, 10, 0),
@@ -66,8 +66,8 @@ namespace SimpleRaytracer.Gui
                  0.75f
             );
 
-            var monkey = Mesh.LoadFromObj("models/monkey/monkey.obj");
-            monkey.Item1.Material = new Material(new Vector3(1, 0.75f, 0.4f), 0.5f);
+            var monkey = Mesh.LoadFromObj("models/cone/cone.obj");
+            monkey.Item1.Material = new Material(new Vector3(0.7f, 0.25f, 0.25f), 0.3f);
 
             scene = new Scene()
             {
@@ -86,7 +86,7 @@ namespace SimpleRaytracer.Gui
                 ground
             };
 
-            float pitch = 19 * (float)(Math.PI / 180);
+            float pitch = 26 * (float)(Math.PI / 180);
             float yaw = 166 * (float)(Math.PI / 180);
             float t = 0;
 
