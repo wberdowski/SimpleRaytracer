@@ -6,7 +6,7 @@ namespace SimpleRaytracer.Gui
 {
     public partial class Window : Form
     {
-        private Size outputResolution = new(600, 600);
+        private Size outputResolution = new(800, 800);
         private Scene scene;
         private Raytracer raytracer;
 
@@ -26,57 +26,56 @@ namespace SimpleRaytracer.Gui
 
         private void Window_Load(object sender, EventArgs e)
         {
-            var camera = new Camera(new Vector3(0, -2, -4), 0.1f, 60, outputResolution.Width / (float)outputResolution.Height);
-
-            camera.Rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitX, -28 * (float)(Math.PI / 180));
+            var camera = new Camera(new Vector3(-1, 1.3f, 4), 0.1f, 25, outputResolution.Width / (float)outputResolution.Height);
 
             var sun = new GpuSphere(
-                new Vector3(-10, -10, 0),
+                new Vector3(-10, 10, 0),
                 new Material(new Vector3(0, 0, 0), new Vector3(1, 1, 0.9f) * 6),
                 6f
             );
 
             var ground = new GpuSphere(
-                new Vector3(0, 1000 + 0.75f, 0),
+                new Vector3(0, -1000 - 0.75f, 0),
                 new Material(new Vector3(1, 1, 1)),
                 1000
             );
 
             // Spheres
 
-            //var sphere1 = new GpuSphere(
-            //    new Vector3(-3, 0, 0),
-            //    new Material(new Vector3(0.95f, 0, 0), 0),
-            //    0.75f
-            //);
+            var sphere1 = new GpuSphere(
+                new Vector3(-3, 0, 0),
+                new Material(new Vector3(0.95f, 0, 0), 0),
+                0.75f
+            );
 
-            //var sphere2 = new GpuSphere(
-            //    new Vector3(-1, 0, 0),
-            //    new Material(new Vector3(0, 0.95f, 0), 0.1f),
-            //     0.75f
-            //);
+            var sphere2 = new GpuSphere(
+                new Vector3(-1, 0, 0),
+                new Material(new Vector3(0, 0.95f, 0), 0.1f),
+                 0.75f
+            );
 
-            //var sphere3 = new GpuSphere(
-            //    new Vector3(1, 0, 0),
-            //    new Material(new Vector3(0, 0, 0.95f), 0.7f),
-            //     0.75f
-            //);
+            var sphere3 = new GpuSphere(
+                new Vector3(1, 0, 0),
+                new Material(new Vector3(0, 0, 0.95f), 0.7f),
+                 0.75f
+            );
 
-            //var sphere4 = new GpuSphere(
-            //    new Vector3(3, 0, 0),
-            //    new Material(new Vector3(0.8f, 0.8f, 0.8f), 1f),
-            //     0.75f
-            //);
+            var sphere4 = new GpuSphere(
+                new Vector3(3, 0, 0),
+                new Material(new Vector3(0.8f, 0.8f, 0.8f), 1f),
+                 0.75f
+            );
 
             var monkey = Mesh.LoadFromObj("models/monkey/monkey.obj");
-            monkey.material = new Material(new Vector3(0, 1, 0));
+            monkey.Item1.Material = new Material(new Vector3(1, 0.75f, 0.4f), 0.5f);
 
             scene = new Scene()
             {
                 Ambient = new Vector3(0.001f, 0.002f, 0.005f)
             };
             scene.Camera = camera;
-            scene.Meshes = new Mesh[] { monkey };
+            scene.Meshes = new Mesh[] { monkey.Item1 };
+            scene.Triangles = monkey.Item2;
             scene.Objects = new GpuSphere[]
             {
                 sun,
@@ -87,8 +86,8 @@ namespace SimpleRaytracer.Gui
                 ground
             };
 
-            float pitch = 0;
-            float yaw = 0;
+            float pitch = 19 * (float)(Math.PI / 180);
+            float yaw = 166 * (float)(Math.PI / 180);
             float t = 0;
 
             DateTime lastTime = DateTime.Now;
@@ -99,54 +98,56 @@ namespace SimpleRaytracer.Gui
 
                 Debug.WriteLine($"Start render {raytracer.Accelerator.Name}");
 
+                var bmp = new Bitmap(outputResolution.Width, outputResolution.Height);
+
                 try
                 {
-                    while (true)
+                    //while (true)
                     {
                         var sw = Stopwatch.StartNew();
 
                         var currentTime = DateTime.Now;
-                        var deltaTime = (float)(currentTime - lastTime).TotalMilliseconds / 100f;
+                        var deltaTime = (float)(currentTime - lastTime).TotalMilliseconds;
                         lastTime = currentTime;
 
                         if ((GetAsyncKeyState(0x57) & 0x8000) > 0)
                         {
-                            scene.Camera.Position = scene.Camera.Position + scene.Camera.Forward * 0.5f * deltaTime;
+                            scene.Camera.Position = scene.Camera.Position + scene.Camera.Forward * 0.5f * deltaTime / 100f;
                         }
 
                         if ((GetAsyncKeyState(0x53) & 0x8000) > 0)
                         {
-                            scene.Camera.Position = scene.Camera.Position - scene.Camera.Forward * 0.5f * deltaTime;
+                            scene.Camera.Position = scene.Camera.Position - scene.Camera.Forward * 0.5f * deltaTime / 100f;
                         }
 
                         if ((GetAsyncKeyState(0x44) & 0x8000) > 0)
                         {
-                            scene.Camera.Position = scene.Camera.Position + scene.Camera.Right * 0.5f * deltaTime;
+                            scene.Camera.Position = scene.Camera.Position + scene.Camera.Right * 0.5f * deltaTime / 100f;
                         }
 
                         if ((GetAsyncKeyState(0x41) & 0x8000) > 0)
                         {
-                            scene.Camera.Position = scene.Camera.Position - scene.Camera.Right * 0.5f * deltaTime;
+                            scene.Camera.Position = scene.Camera.Position - scene.Camera.Right * 0.5f * deltaTime / 100f;
                         }
 
                         if ((GetAsyncKeyState(0x26) & 0x8000) > 0)
                         {
-                            pitch += 0.2f * deltaTime;
+                            pitch += 0.2f * deltaTime / 100f;
                         }
 
                         if ((GetAsyncKeyState(0x28) & 0x8000) > 0)
                         {
-                            pitch -= 0.2f * deltaTime;
+                            pitch -= 0.2f * deltaTime / 100f;
                         }
 
                         if ((GetAsyncKeyState(0x25) & 0x8000) > 0)
                         {
-                            yaw -= 0.2f * deltaTime;
+                            yaw -= 0.2f * deltaTime / 100f;
                         }
 
                         if ((GetAsyncKeyState(0x27) & 0x8000) > 0)
                         {
-                            yaw += 0.2f * deltaTime;
+                            yaw += 0.2f * deltaTime / 100f;
                         }
 
                         scene.Camera.Rotation = Quaternion.CreateFromYawPitchRoll(yaw, pitch, 0);
@@ -154,28 +155,27 @@ namespace SimpleRaytracer.Gui
                         //scene.Objects[2].position.X = (float)Math.Sin(t);
                         //scene.Objects[2].position.Z = (float)Math.Cos(t);
 
-                        t += deltaTime / 10;
+                        t += deltaTime / 1000f;
 
-                        raytracer.Render(scene, 100, 10);
+                        raytracer.Render(scene, 3000, 16);
 
-                        var bmp = raytracer.WaitForResult();
+                        raytracer.WaitForResult(ref bmp);
                         sw.Stop();
 
                         Debug.WriteLine($"Wait for result: {sw.Elapsed.TotalMilliseconds} ms");
 
-                        Debug.WriteLine("Done");
+                        //Debug.WriteLine("Done");
 
-                        //bmp.Save("render.png");
+                        Directory.CreateDirectory("renders");
+                        bmp.Save($"renders/render_{DateTime.Now.Ticks}.png");
 
-                        Debug.WriteLine("Saved");
-
+                        //Debug.WriteLine("Saved");
 
                         Invoke(() =>
                         {
-                            var old = pictureBox.Image;
                             pictureBox.Image = bmp;
-                            old?.Dispose();
                         });
+                        Thread.Sleep(10);
                     }
 
                 }

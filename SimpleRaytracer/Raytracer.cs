@@ -2,8 +2,11 @@
 using ILGPU.Algorithms;
 using ILGPU.Algorithms.Random;
 using ILGPU.Runtime;
+using ILGPU.Runtime.CPU;
+using ILGPU.Runtime.Cuda;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Linq.Expressions;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
@@ -15,10 +18,11 @@ namespace SimpleRaytracer
 
         private Context _context;
         private Accelerator _accelerator;
-        private Action<Index1D, ArrayView1D<ColorDataBgr, Stride1D.Dense>, ArrayView1D<GpuSphere, Stride1D.Dense>, ArrayView1D<Mesh, Stride1D.Dense>, RenderParams, ulong> _loadedKernel;
+        private Action<Index1D, ArrayView1D<ColorDataBgr, Stride1D.Dense>, ArrayView1D<GpuSphere, Stride1D.Dense>, ArrayView1D<Mesh, Stride1D.Dense>, ArrayView1D<Triangle, Stride1D.Dense>, RenderParams, ulong> _loadedKernel;
         private MemoryBuffer1D<ColorDataBgr, Stride1D.Dense>? _frameBuffer;
         private MemoryBuffer1D<GpuSphere, Stride1D.Dense>? _sceneSphereBuffer;
         private MemoryBuffer1D<Mesh, Stride1D.Dense> _sceneMeshBuffer;
+        private MemoryBuffer1D<Triangle, Stride1D.Dense> _sceneTriangleBuffer;
 
         public Size Resolution { get; }
 
@@ -31,7 +35,7 @@ namespace SimpleRaytracer
 
         private void InitializeAccelerator()
         {
-            _context = Context.Create(b => b.Default().EnableAlgorithms());
+            _context = Context.Create(b => b.CPU().Cuda().EnableAlgorithms());
 
             _accelerator = _context.GetPreferredDevice(false)
                 .CreateAccelerator(_context);
@@ -40,7 +44,7 @@ namespace SimpleRaytracer
             _frameBuffer = _accelerator.Allocate1D<ColorDataBgr>(Resolution.Width * Resolution.Height);
 
             // load / precompile the kernel
-            _loadedKernel = _accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<ColorDataBgr, Stride1D.Dense>, ArrayView1D<GpuSphere, Stride1D.Dense>, ArrayView1D<Mesh, Stride1D.Dense>, RenderParams, ulong>(Kernel);
+            _loadedKernel = _accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<ColorDataBgr, Stride1D.Dense>, ArrayView1D<GpuSphere, Stride1D.Dense>, ArrayView1D<Mesh, Stride1D.Dense>, ArrayView1D<Triangle, Stride1D.Dense>, RenderParams, ulong>(Kernel);
         }
 
         public void Render(Scene scene, int sampleCount = 100, int bounceCount = 5)
@@ -48,10 +52,12 @@ namespace SimpleRaytracer
             // Allocate buffers
             _sceneSphereBuffer = _accelerator.Allocate1D<GpuSphere>(scene.Objects.Length);
             _sceneMeshBuffer = _accelerator.Allocate1D<Mesh>(scene.Meshes.Length);
+            _sceneTriangleBuffer = _accelerator.Allocate1D<Triangle>(scene.Triangles.Length);
 
             // Copy data
             _sceneSphereBuffer.CopyFromCPU(scene.Objects);
             _sceneMeshBuffer.CopyFromCPU(scene.Meshes);
+            _sceneTriangleBuffer.CopyFromCPU(scene.Triangles);
 
             // Start kernel execution
             var renderParams = new RenderParams(
@@ -62,7 +68,7 @@ namespace SimpleRaytracer
                 scene
             );
 
-            _loadedKernel(Resolution.Width * Resolution.Height, _frameBuffer.View, _sceneSphereBuffer, _sceneMeshBuffer, renderParams, (ulong)DateTime.Now.Ticks);
+            _loadedKernel(Resolution.Width * Resolution.Height, _frameBuffer.View, _sceneSphereBuffer, _sceneMeshBuffer, _sceneTriangleBuffer, renderParams, (ulong)DateTime.Now.Ticks);
         }
 
         public Bitmap WaitForResult()
@@ -87,7 +93,27 @@ namespace SimpleRaytracer
             return bmp;
         }
 
-        public static void Kernel(Index1D index, ArrayView1D<ColorDataBgr, Stride1D.Dense> output, ArrayView1D<GpuSphere, Stride1D.Dense> objects, ArrayView1D<Mesh, Stride1D.Dense> meshes, RenderParams renderParams, ulong rngSeed)
+        public void WaitForResult(ref Bitmap bmp)
+        {
+            _accelerator.Synchronize();
+
+            var outputBuffer = _frameBuffer.GetAsArray1D();
+            var bmpSizeBytes = Resolution.Width * Resolution.Height * sizeof(byte) * 3;
+
+            var bmpData = bmp.LockBits(new Rectangle(0, 0, Resolution.Width, Resolution.Height), ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
+            var ptrDst = bmpData.Scan0.ToPointer();
+
+            fixed (void* ptrSrc = &outputBuffer[0])
+            {
+                Unsafe.CopyBlock(ptrDst, ptrSrc, (uint)bmpSizeBytes);
+            }
+
+            bmp.UnlockBits(bmpData);
+
+            _sceneSphereBuffer?.Dispose();
+        }
+
+        public static void Kernel(Index1D index, ArrayView1D<ColorDataBgr, Stride1D.Dense> output, ArrayView1D<GpuSphere, Stride1D.Dense> objects, ArrayView1D<Mesh, Stride1D.Dense> meshes, ArrayView1D<Triangle, Stride1D.Dense> triangles, RenderParams renderParams, ulong rngSeed)
         {
             // Get pixel position
             var x = index % renderParams.ResolutionX;
@@ -107,12 +133,12 @@ namespace SimpleRaytracer
             for (int i = 0; i < renderParams.Samples; i++)
             {
                 // Add small ray origin offset
-                var offsetVec = GetRandomVector2InUnitSphere(ref rng) / 10000;
+                var offsetVec = GetRandomVector2InUnitSphere(ref rng) / 20000;
 
                 // Calculate ray with origin at camera position
                 var local = renderParams.BottomLeft + new Vector3(
                     renderParams.PlaneWidth * normalizedX + offsetVec.X,
-                    renderParams.PlaneHeight * normalizedY + offsetVec.Y,
+                    renderParams.PlaneHeight * (1 - normalizedY) + offsetVec.Y,
                     0
                 );
 
@@ -125,7 +151,7 @@ namespace SimpleRaytracer
                 var cameraRay = new Ray(renderParams.CameraPosition, dir);
 
                 // Accumulate received light for a given pixel
-                pixelColor += TraceBounces(cameraRay, objects, meshes, renderParams.Bounces, ref rng, renderParams);
+                pixelColor += TraceBounces(cameraRay, objects, meshes, triangles, renderParams.Bounces, ref rng, renderParams);
             }
 
             // Gamma correction
@@ -135,15 +161,16 @@ namespace SimpleRaytracer
             output[index] = ColorDataBgr.GetGammaCorrected(pixelColor, scale);
         }
 
-        public static bool TryGetClosestHit(ArrayView1D<GpuSphere, Stride1D.Dense> objects, ArrayView1D<Mesh, Stride1D.Dense> meshes, Ray ray, out Hit closestHit)
+        public static bool TryGetClosestHit(ArrayView1D<GpuSphere, Stride1D.Dense> objects, ArrayView1D<Mesh, Stride1D.Dense> meshes, ArrayView1D<Triangle, Stride1D.Dense> triangles, Ray ray, out Hit closestHit)
         {
+            Hit hit = default;
             closestHit = default;
             bool didHit = false;
             float minDist = float.MaxValue;
 
             for (int i = 0; i < objects.Length; i++)
             {
-                if (objects[i].TryGetRayHit(ray, out var hit) && hit.distance < minDist)
+                if (objects[i].TryGetRayHit(ray, ref hit) && hit.distance < minDist)
                 {
                     closestHit = hit;
                     minDist = hit.distance;
@@ -153,25 +180,32 @@ namespace SimpleRaytracer
 
             for (int i = 0; i < meshes.Length; i++)
             {
-                if (meshes[i].RayAABBIntersect(ray, out var hit) && hit.distance < minDist)
+                if (meshes[i].TestAabb(ray, out var dist) && dist < minDist)
                 {
-                    closestHit = hit;
-                    minDist = hit.distance;
-                    didHit = true;
+                    for (int j = 0; j < triangles.Length; j++)
+                    {
+                        if (triangles[j].IntersectRayTriangle(ray, ref hit) && hit.distance < minDist)
+                        {
+                            hit.material = meshes[i].Material;
+                            closestHit = hit;
+                            minDist = hit.distance;
+                            didHit = true;
+                        }
+                    }
                 }
             }
 
             return didHit;
         }
 
-        private static Vector3 TraceBounces(Ray ray, ArrayView1D<GpuSphere, Stride1D.Dense> objects, ArrayView1D<Mesh, Stride1D.Dense> meshes, int bounces, ref XorShift128 random, RenderParams renderParams)
+        private static Vector3 TraceBounces(Ray ray, ArrayView1D<GpuSphere, Stride1D.Dense> objects, ArrayView1D<Mesh, Stride1D.Dense> meshes, ArrayView1D<Triangle, Stride1D.Dense> triangles, int bounces, ref XorShift128 random, RenderParams renderParams)
         {
             var rayColor = Vector3.One;
             var lightColor = Vector3.Zero;
 
             for (int i = 0; i <= bounces; i++)
             {
-                if (!TryGetClosestHit(objects, meshes, ray, out var hit))
+                if (!TryGetClosestHit(objects, meshes, triangles, ray, out var hit))
                 {
                     lightColor += renderParams.Ambient * rayColor;
                     break;

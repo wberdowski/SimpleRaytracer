@@ -16,7 +16,7 @@ namespace SimpleRaytracer
             this.radius = radius;
         }
 
-        public bool TryGetRayHit(Ray ray, out Hit hit)
+        public bool TryGetRayHit(Ray ray, ref Hit hit)
         {
             var offset = position - ray.Origin;
             var projection = Vector3.Dot(offset, ray.Direction);
@@ -25,7 +25,6 @@ namespace SimpleRaytracer
 
             if (distanceToIntersection > radius)
             {
-                hit = default;
                 return false; // The ray doesn't intersect the sphere
             }
 
@@ -35,7 +34,6 @@ namespace SimpleRaytracer
 
             if (hitDistance1 <= 0 && hitDistance2 <= 0)
             {
-                hit = default;
                 return false; // The sphere is behind the ray's origin
             }
 
