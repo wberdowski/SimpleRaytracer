@@ -15,10 +15,4 @@
     <PackageReference Include="System.Drawing.Common" Version="7.0.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Update="Models\Monkey\monkey.obj">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
 </Project>
