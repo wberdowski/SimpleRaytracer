@@ -6,6 +6,7 @@ namespace SimpleRaytracer
     {
         public Camera? Camera { get; set; }
         public GpuSphere[] Objects { get; set; }
+        public Mesh[] Meshes { get; set; }
         public Vector3 Ambient { get; set; }
     }
 }

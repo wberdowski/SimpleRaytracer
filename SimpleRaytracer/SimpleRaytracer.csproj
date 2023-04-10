@@ -9,9 +9,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="CjClutter.ObjLoader.Unofficial" Version="1.1.0" />
     <PackageReference Include="ILGPU" Version="1.3.1" />
     <PackageReference Include="ILGPU.Algorithms" Version="1.3.1" />
     <PackageReference Include="System.Drawing.Common" Version="7.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Models\Monkey\monkey.obj">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
