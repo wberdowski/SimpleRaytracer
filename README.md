@@ -1,6 +1,6 @@
 # SimpleRaytracer (WIP)
 
-![simpleraytracer](https://user-images.githubusercontent.com/10144015/230960883-e832bd2f-e3eb-4971-bc0f-0605e6b1b0d7.png)
+![simpleraytracer](https://user-images.githubusercontent.com/10144015/230967458-4545f690-4f89-430e-a65b-59b9c2db4db8.png)
 
 # References
 - [Sebastian Lague](https://github.com/SebLague) (2023) - "[Coding Adventure: Ray Tracing](https://youtu.be/Qz0KTGYJtUk)"
