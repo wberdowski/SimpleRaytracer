@@ -12,4 +12,10 @@
     <ProjectReference Include="..\SimpleRaytracer\SimpleRaytracer.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Models\Monkey\monkey.obj">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
