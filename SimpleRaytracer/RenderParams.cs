@@ -16,8 +16,9 @@ namespace SimpleRaytracer
         public Vector3 CameraUp { get; }
         public Vector3 CameraForward { get; }
         public Vector3 Ambient { get; }
+        public int SimplifiedEnabled { get; }
 
-        public RenderParams(int resolutionX, int resolutionY, int samples, int bounces, Scene scene)
+        public RenderParams(int resolutionX, int resolutionY, int samples, int bounces, Scene scene, int simplifiedEnabled)
         {
             if (scene is null)
             {
@@ -41,6 +42,7 @@ namespace SimpleRaytracer
             CameraUp = scene.Camera.Up;
             CameraForward = scene.Camera.Forward;
             Ambient = scene.Ambient;
+            SimplifiedEnabled = simplifiedEnabled;
         }
     }
 }

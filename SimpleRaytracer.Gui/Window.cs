@@ -6,7 +6,7 @@ namespace SimpleRaytracer.Gui
 {
     public partial class Window : Form
     {
-        private Size outputResolution = new(800, 800);
+        private Size outputResolution = new(1280, 720);
         private Scene scene;
         private Raytracer raytracer;
 
@@ -66,7 +66,7 @@ namespace SimpleRaytracer.Gui
                  0.75f
             );
 
-            var monkey = Mesh.LoadFromObj("models/cone/cone.obj");
+            var monkey = Mesh.LoadFromObj("models/monkey/monkey.obj");
             monkey.Item1.Material = new Material(new Vector3(0.7f, 0.25f, 0.25f), 0.3f);
 
             scene = new Scene()
@@ -79,10 +79,10 @@ namespace SimpleRaytracer.Gui
             scene.Objects = new GpuSphere[]
             {
                 sun,
-                //sphere1,
-                //sphere2,
-                //sphere3,
-                //sphere4,
+                sphere1,
+                sphere2,
+                sphere3,
+                sphere4,
                 ground
             };
 
@@ -102,7 +102,7 @@ namespace SimpleRaytracer.Gui
 
                 try
                 {
-                    //while (true)
+                    while (true)
                     {
                         var sw = Stopwatch.StartNew();
 
@@ -152,12 +152,9 @@ namespace SimpleRaytracer.Gui
 
                         scene.Camera.Rotation = Quaternion.CreateFromYawPitchRoll(yaw, pitch, 0);
 
-                        //scene.Objects[2].position.X = (float)Math.Sin(t);
-                        //scene.Objects[2].position.Z = (float)Math.Cos(t);
-
                         t += deltaTime / 1000f;
 
-                        raytracer.Render(scene, 3000, 16);
+                        raytracer.Render(scene, 5, 1);
 
                         raytracer.WaitForResult(ref bmp);
                         sw.Stop();
@@ -166,8 +163,8 @@ namespace SimpleRaytracer.Gui
 
                         //Debug.WriteLine("Done");
 
-                        Directory.CreateDirectory("renders");
-                        bmp.Save($"renders/render_{DateTime.Now.Ticks}.png");
+                        //Directory.CreateDirectory("renders");
+                        //bmp.Save($"renders/render_{DateTime.Now.Ticks}.png");
 
                         //Debug.WriteLine("Saved");
 

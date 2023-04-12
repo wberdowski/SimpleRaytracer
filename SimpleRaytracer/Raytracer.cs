@@ -6,7 +6,6 @@ using ILGPU.Runtime.CPU;
 using ILGPU.Runtime.Cuda;
 using System.Drawing;
 using System.Drawing.Imaging;
-using System.Linq.Expressions;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
@@ -65,7 +64,8 @@ namespace SimpleRaytracer
                 Resolution.Height,
                 sampleCount,
                 bounceCount,
-                scene
+                scene,
+                1
             );
 
             _loadedKernel(Resolution.Width * Resolution.Height, _frameBuffer.View, _sceneSphereBuffer, _sceneMeshBuffer, _sceneTriangleBuffer, renderParams, (ulong)DateTime.Now.Ticks);
@@ -132,8 +132,13 @@ namespace SimpleRaytracer
             // Run raytracing algorithm n-times for every pixel
             for (int i = 0; i < renderParams.Samples; i++)
             {
+                var offsetVec = Vector2.Zero;
+
                 // Add small ray origin offset
-                var offsetVec = GetRandomVector2InUnitSphere(ref rng) / 20000;
+                if (renderParams.SimplifiedEnabled != 1)
+                {
+                    offsetVec = GetRandomVector2InUnitSphere(ref rng) / 20000;
+                }
 
                 // Calculate ray with origin at camera position
                 var local = renderParams.BottomLeft + new Vector3(
@@ -151,7 +156,16 @@ namespace SimpleRaytracer
                 var cameraRay = new Ray(renderParams.CameraPosition, dir);
 
                 // Accumulate received light for a given pixel
-                pixelColor += TraceBounces(cameraRay, objects, meshes, triangles, renderParams.Bounces, ref rng, renderParams);
+                if (renderParams.SimplifiedEnabled != 1)
+                {
+                    pixelColor += TraceBounces(cameraRay, objects, meshes, triangles, renderParams.Bounces, ref rng, renderParams);
+                }
+                else
+                {
+                    pixelColor = TraceSimplified(cameraRay, objects, meshes, triangles, renderParams.Bounces, ref rng, renderParams);
+                    renderParams.Samples = 1;
+                    break;
+                }
             }
 
             // Gamma correction
@@ -223,6 +237,25 @@ namespace SimpleRaytracer
             }
 
             return lightColor;
+        }
+
+        private static Vector3 TraceSimplified(Ray ray, ArrayView1D<GpuSphere, Stride1D.Dense> objects, ArrayView1D<Mesh, Stride1D.Dense> meshes, ArrayView1D<Triangle, Stride1D.Dense> triangles, int bounces, ref XorShift128 random, RenderParams renderParams)
+        {
+            if (TryGetClosestHit(objects, meshes, triangles, ray, out var hit))
+            {
+                return Clamp(hit.material.Albedo * Vector3.Dot(hit.normal, Vector3.Normalize(Vector3.One)) + hit.material.Emission);
+            }
+
+            return renderParams.Ambient;
+        }
+
+        private static Vector3 Clamp(Vector3 value)
+        {
+            value.X = XMath.Clamp(value.X, 0, 1);
+            value.Y = XMath.Clamp(value.Y, 0, 1);
+            value.Z = XMath.Clamp(value.Z, 0, 1);
+
+            return value;
         }
 
         private static float GetRandomFloatNormalized(ref XorShift128 random)
