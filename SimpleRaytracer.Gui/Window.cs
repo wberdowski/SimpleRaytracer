@@ -26,7 +26,7 @@ namespace SimpleRaytracer.Gui
 
         private void Window_Load(object sender, EventArgs e)
         {
-            var camera = new Camera(new Vector3(-1, 2.3f, 4), 0.1f, 35, outputResolution.Width / (float)outputResolution.Height);
+            var camera = new Camera(new Vector3(-1, 2.3f, 4), 0.1f, 60, outputResolution.Width / (float)outputResolution.Height);
 
             var sun = new GpuSphere(
                 new Vector3(-10, 10, 0),
@@ -34,14 +34,13 @@ namespace SimpleRaytracer.Gui
                 6f
             );
 
-            var ground = new GpuSphere(
-                new Vector3(0, -1000 - 0.75f, 0),
+            var ground = MeshGenerator.GetPlaneData(
+                new Vector3(0, 0, 0),
                 new Material(new Vector3(1, 1, 1)),
-                1000
+                10
             );
 
             // Spheres
-
             var sphere1 = new GpuSphere(
                 new Vector3(-3, 0, 0),
                 new Material(new Vector3(0.95f, 0, 0), 0),
@@ -66,24 +65,24 @@ namespace SimpleRaytracer.Gui
                  0.75f
             );
 
-            var monkey = Mesh.LoadFromObj("models/monkey/monkey.obj");
-            monkey.Item1.Material = new Material(new Vector3(0.7f, 0.25f, 0.25f), 0.3f);
+            var monkey = Mesh.LoadFromObj("models/suzanne/suzanne.obj");
+            monkey.Item1.Material = new Material(new Vector3(0.7f, 0.25f, 0.25f), 0f);
 
             scene = new Scene()
             {
                 Ambient = new Vector3(0.001f, 0.002f, 0.005f)
             };
             scene.Camera = camera;
-            scene.Meshes = new Mesh[] { monkey.Item1 };
-            scene.Triangles = monkey.Item2;
+            scene.Meshes = new Mesh[] { /*monkey.Item1*/ ground.Item1 };
+            scene.Triangles = ground.Item2;
+            //scene.Triangles = monkey.Item2;
             scene.Objects = new GpuSphere[]
             {
                 sun,
-                sphere1,
-                sphere2,
-                sphere3,
-                sphere4,
-                ground
+                //sphere1,
+                //sphere2,
+                //sphere3,
+                //sphere4,
             };
 
             float pitch = 26 * (float)(Math.PI / 180);
@@ -102,6 +101,10 @@ namespace SimpleRaytracer.Gui
 
                 try
                 {
+                    scene.Camera.Rotation = Quaternion.CreateFromYawPitchRoll(yaw, pitch, 0);
+
+                    raytracer.SetScene(scene);
+
                     while (true)
                     {
                         var sw = Stopwatch.StartNew();
@@ -154,7 +157,7 @@ namespace SimpleRaytracer.Gui
 
                         t += deltaTime / 1000f;
 
-                        raytracer.Render(scene, 5, 1);
+                        raytracer.Render(100, 10);
 
                         raytracer.WaitForResult(ref bmp);
                         sw.Stop();

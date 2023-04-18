@@ -4,6 +4,7 @@ using ILGPU.Algorithms.Random;
 using ILGPU.Runtime;
 using ILGPU.Runtime.CPU;
 using ILGPU.Runtime.Cuda;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Numerics;
@@ -19,6 +20,7 @@ namespace SimpleRaytracer
         private Accelerator _accelerator;
         private Action<Index1D, ArrayView1D<ColorDataBgr, Stride1D.Dense>, ArrayView1D<GpuSphere, Stride1D.Dense>, ArrayView1D<Mesh, Stride1D.Dense>, ArrayView1D<Triangle, Stride1D.Dense>, RenderParams, ulong> _loadedKernel;
         private MemoryBuffer1D<ColorDataBgr, Stride1D.Dense>? _frameBuffer;
+        private Scene _scene;
         private MemoryBuffer1D<GpuSphere, Stride1D.Dense>? _sceneSphereBuffer;
         private MemoryBuffer1D<Mesh, Stride1D.Dense> _sceneMeshBuffer;
         private MemoryBuffer1D<Triangle, Stride1D.Dense> _sceneTriangleBuffer;
@@ -46,26 +48,35 @@ namespace SimpleRaytracer
             _loadedKernel = _accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<ColorDataBgr, Stride1D.Dense>, ArrayView1D<GpuSphere, Stride1D.Dense>, ArrayView1D<Mesh, Stride1D.Dense>, ArrayView1D<Triangle, Stride1D.Dense>, RenderParams, ulong>(Kernel);
         }
 
-        public void Render(Scene scene, int sampleCount = 100, int bounceCount = 5)
+        public void SetScene(Scene scene)
         {
+            _scene = scene;
+
             // Allocate buffers
             _sceneSphereBuffer = _accelerator.Allocate1D<GpuSphere>(scene.Objects.Length);
             _sceneMeshBuffer = _accelerator.Allocate1D<Mesh>(scene.Meshes.Length);
             _sceneTriangleBuffer = _accelerator.Allocate1D<Triangle>(scene.Triangles.Length);
 
+            Debug.WriteLine($"Allocated ({nameof(_sceneSphereBuffer)}) = {_sceneSphereBuffer.LengthInBytes:n0} B");
+            Debug.WriteLine($"Allocated ({nameof(_sceneMeshBuffer)}) = {_sceneMeshBuffer.LengthInBytes:n0} B");
+            Debug.WriteLine($"Allocated ({nameof(_sceneTriangleBuffer)}) = {_sceneTriangleBuffer.LengthInBytes:n0} B");
+
             // Copy data
             _sceneSphereBuffer.CopyFromCPU(scene.Objects);
             _sceneMeshBuffer.CopyFromCPU(scene.Meshes);
             _sceneTriangleBuffer.CopyFromCPU(scene.Triangles);
+        }
 
+        public void Render(int sampleCount = 100, int bounceCount = 5)
+        {
             // Start kernel execution
             var renderParams = new RenderParams(
                 Resolution.Width,
                 Resolution.Height,
                 sampleCount,
                 bounceCount,
-                scene,
-                1
+                _scene,
+                0
             );
 
             _loadedKernel(Resolution.Width * Resolution.Height, _frameBuffer.View, _sceneSphereBuffer, _sceneMeshBuffer, _sceneTriangleBuffer, renderParams, (ulong)DateTime.Now.Ticks);
@@ -88,7 +99,7 @@ namespace SimpleRaytracer
 
             bmp.UnlockBits(bmpData);
 
-            _sceneSphereBuffer?.Dispose();
+            //_sceneSphereBuffer?.Dispose();
 
             return bmp;
         }
@@ -110,7 +121,7 @@ namespace SimpleRaytracer
 
             bmp.UnlockBits(bmpData);
 
-            _sceneSphereBuffer?.Dispose();
+            //_sceneSphereBuffer?.Dispose();
         }
 
         public static void Kernel(Index1D index, ArrayView1D<ColorDataBgr, Stride1D.Dense> output, ArrayView1D<GpuSphere, Stride1D.Dense> objects, ArrayView1D<Mesh, Stride1D.Dense> meshes, ArrayView1D<Triangle, Stride1D.Dense> triangles, RenderParams renderParams, ulong rngSeed)
@@ -194,7 +205,7 @@ namespace SimpleRaytracer
 
             for (int i = 0; i < meshes.Length; i++)
             {
-                if (meshes[i].TestAabb(ray, out var dist) && dist < minDist)
+                if (meshes[i].Aabb.TestAabb(ray, out var dist) && dist < minDist)
                 {
                     for (int j = 0; j < triangles.Length; j++)
                     {

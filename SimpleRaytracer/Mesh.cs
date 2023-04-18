@@ -1,6 +1,4 @@
-﻿using ILGPU.Algorithms;
-using ObjLoader.Loader.Data;
-using ObjLoader.Loader.Loaders;
+﻿using ObjLoader.Loader.Loaders;
 using System.Numerics;
 
 namespace SimpleRaytracer
@@ -12,11 +10,10 @@ namespace SimpleRaytracer
         public Aabb Aabb;
         public int TriangleCount = 0;
 
-        public Mesh(Vector3 position, Material material, Vector3[] vertices, Aabb aabb)
+        public Mesh(Vector3 position, Material material, Aabb aabb)
         {
             Position = position;
             Material = material;
-            //Vertices = vertices;
             Aabb = aabb;
         }
 
@@ -108,66 +105,6 @@ namespace SimpleRaytracer
 
                 return (mesh, triangles.ToArray());
             }
-        }
-
-        public bool GetRayAabbIntersection(Ray ray, ref Hit hit)
-        {
-            Vector3 dirfrac = Vector3.One / ray.Direction;
-
-            // lb is the corner of AABB with minimal coordinates - left bottom, rt is maximal corner
-            // r.org is origin of ray
-            float t1 = (Aabb.Min.X - ray.Origin.X) * dirfrac.X;
-            float t2 = (Aabb.Max.X - ray.Origin.X) * dirfrac.X;
-            float t3 = (Aabb.Min.Y - ray.Origin.Y) * dirfrac.Y;
-            float t4 = (Aabb.Max.Y - ray.Origin.Y) * dirfrac.Y;
-            float t5 = (Aabb.Min.Z - ray.Origin.Z) * dirfrac.Z;
-            float t6 = (Aabb.Max.Z - ray.Origin.Z) * dirfrac.Z;
-
-            float tmin = XMath.Max(XMath.Max(XMath.Min(t1, t2), XMath.Min(t3, t4)), XMath.Min(t5, t6));
-            float tmax = XMath.Min(XMath.Min(XMath.Max(t1, t2), XMath.Max(t3, t4)), XMath.Max(t5, t6));
-
-            // if tmax < 0, ray (line) is intersecting AABB, but the whole AABB is behind us
-            if (tmin > tmax || tmax < 0)
-            {
-                return false;
-            }
-
-            // TODO: Subtract epsilon
-            var dist = tmin - 0.001f;
-            var hitPos = ray.Origin + ray.Direction * dist;
-            var normal = Vector3.Normalize(hitPos - Position); // TODO
-
-            hit = new Hit(Material, hitPos, normal, dist);
-
-            return true;
-        }
-
-        public bool TestAabb(Ray ray, out float dist)
-        {
-            Vector3 dirfrac = Vector3.One / ray.Direction;
-
-            // lb is the corner of AABB with minimal coordinates - left bottom, rt is maximal corner
-            // r.org is origin of ray
-            float t1 = (Aabb.Min.X - ray.Origin.X) * dirfrac.X;
-            float t2 = (Aabb.Max.X - ray.Origin.X) * dirfrac.X;
-            float t3 = (Aabb.Min.Y - ray.Origin.Y) * dirfrac.Y;
-            float t4 = (Aabb.Max.Y - ray.Origin.Y) * dirfrac.Y;
-            float t5 = (Aabb.Min.Z - ray.Origin.Z) * dirfrac.Z;
-            float t6 = (Aabb.Max.Z - ray.Origin.Z) * dirfrac.Z;
-
-            float tmin = XMath.Max(XMath.Max(XMath.Min(t1, t2), XMath.Min(t3, t4)), XMath.Min(t5, t6));
-            float tmax = XMath.Min(XMath.Min(XMath.Max(t1, t2), XMath.Max(t3, t4)), XMath.Max(t5, t6));
-
-            // if tmax < 0, ray (line) is intersecting AABB, but the whole AABB is behind us
-            if (tmin > tmax || tmax < 0)
-            {
-                dist = float.PositiveInfinity;
-                return false;
-            }
-
-            dist = tmin;
-
-            return true;
         }
     }
 }

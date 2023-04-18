@@ -9,7 +9,7 @@ namespace SimpleRaytracer
         public float Aspect { get; set; }
         public float PlaneHeight => NearClipPlane * (float)Math.Tan(FieldOfView * 0.5f * (Math.PI / 180)) * 2;
         public float PlaneWidth => PlaneHeight * Aspect;
-        public Vector3 BottomLeft => new Vector3(-PlaneWidth / 2, -PlaneHeight / 2, NearClipPlane);
+        public Vector3 BottomLeft => new(-PlaneWidth / 2, -PlaneHeight / 2, NearClipPlane);
 
         public Camera()
         {
