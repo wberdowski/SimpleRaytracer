@@ -16,9 +16,9 @@ namespace SimpleRaytracer
         public Vector3 CameraUp { get; }
         public Vector3 CameraForward { get; }
         public Vector3 Ambient { get; }
-        public int SimplifiedEnabled { get; }
+        public GpuBool SimplifiedEnabled { get; }
 
-        public RenderParams(int resolutionX, int resolutionY, int samples, int bounces, Scene scene, int simplifiedEnabled)
+        public RenderParams(int resolutionX, int resolutionY, int samples, int bounces, Scene scene, GpuBool simplifiedEnabled)
         {
             if (scene is null)
             {

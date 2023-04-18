@@ -7,21 +7,21 @@ namespace SimpleRaytracer
     {
         public Vector3 Position;
         public Material Material;
-        public Aabb Aabb;
-        public int TriangleCount = 0;
+        public Aabb Aabb = default;
+        public GpuBool SkipBoundingBoxTest = false;
+        public int triangleCount = default;
+        public int arrayOffset = default;
 
-        public Mesh(Vector3 position, Material material, Aabb aabb)
+        public Mesh(Vector3 position, Material material)
         {
             Position = position;
             Material = material;
-            Aabb = aabb;
         }
 
-        public static (Mesh, Triangle[]) LoadFromObj(string filepath)
+        public void LoadFromObj(string filepath, ref List<Triangle> triangles)
         {
             var objLoaderFactory = new ObjLoaderFactory();
             var objLoader = objLoaderFactory.Create();
-            var mesh = new Mesh();
 
             float minX = float.MaxValue;
             float minY = float.MaxValue;
@@ -34,7 +34,7 @@ namespace SimpleRaytracer
             using (var fileStream = new FileStream(filepath, FileMode.Open))
             {
                 var result = objLoader.Load(fileStream);
-                var triangles = new List<Triangle>();
+                var count = 0;
 
                 foreach (var face in result.Groups[0].Faces)
                 {
@@ -47,36 +47,36 @@ namespace SimpleRaytracer
                             var f = face[i];
 
                             var vertexPos = result.Vertices[f.VertexIndex - 1];
-                            vectors[i] = new Vector3(vertexPos.X, vertexPos.Y, vertexPos.Z);
+                            vectors[i] = new Vector3(vertexPos.X, vertexPos.Y, vertexPos.Z) + Position;
 
-                            if (vertexPos.X < minX)
+                            if (vectors[i].X < minX)
                             {
-                                minX = vertexPos.X;
+                                minX = vectors[i].X;
                             }
 
-                            if (vertexPos.Y < minY)
+                            if (vectors[i].Y < minY)
                             {
-                                minY = vertexPos.Y;
+                                minY = vectors[i].Y;
                             }
 
-                            if (vertexPos.Z < minZ)
+                            if (vectors[i].Z < minZ)
                             {
-                                minZ = vertexPos.Z;
+                                minZ = vectors[i].Z;
                             }
 
-                            if (vertexPos.X > maxX)
+                            if (vectors[i].X > maxX)
                             {
-                                maxX = vertexPos.X;
+                                maxX = vectors[i].X;
                             }
 
-                            if (vertexPos.Y > maxY)
+                            if (vectors[i].Y > maxY)
                             {
-                                maxY = vertexPos.Y;
+                                maxY = vectors[i].Y;
                             }
 
-                            if (vertexPos.Z > maxZ)
+                            if (vectors[i].Z > maxZ)
                             {
-                                maxZ = vertexPos.Z;
+                                maxZ = vectors[i].Z;
                             }
 
                             //result.Textures[v.TextureIndex - 1].X,
@@ -87,6 +87,7 @@ namespace SimpleRaytracer
                         }
 
                         triangles.Add(new Triangle(vectors[0], vectors[1], vectors[2]));
+                        count++;
                     }
                     else
                     {
@@ -100,10 +101,9 @@ namespace SimpleRaytracer
                     Max = new Vector3(maxX, maxY, maxZ)
                 };
 
-                mesh.Aabb = aabb;
-                mesh.TriangleCount = triangles.Count;
-
-                return (mesh, triangles.ToArray());
+                Aabb = aabb;
+                arrayOffset = triangles.Count - count;
+                triangleCount = count;
             }
         }
     }

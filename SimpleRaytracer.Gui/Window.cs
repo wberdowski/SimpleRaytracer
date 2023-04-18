@@ -26,18 +26,12 @@ namespace SimpleRaytracer.Gui
 
         private void Window_Load(object sender, EventArgs e)
         {
-            var camera = new Camera(new Vector3(-1, 2.3f, 4), 0.1f, 60, outputResolution.Width / (float)outputResolution.Height);
+            var camera = new Camera(new Vector3(0, 2.3f, -4), 0.1f, 60, outputResolution.Width / (float)outputResolution.Height);
 
             var sun = new GpuSphere(
                 new Vector3(-10, 10, 0),
                 new Material(new Vector3(0, 0, 0), new Vector3(1, 1, 0.9f) * 6),
                 6f
-            );
-
-            var ground = MeshGenerator.GetPlaneData(
-                new Vector3(0, 0, 0),
-                new Material(new Vector3(1, 1, 1)),
-                10
             );
 
             // Spheres
@@ -65,16 +59,29 @@ namespace SimpleRaytracer.Gui
                  0.75f
             );
 
-            var monkey = Mesh.LoadFromObj("models/suzanne/suzanne.obj");
-            monkey.Item1.Material = new Material(new Vector3(0.7f, 0.25f, 0.25f), 0f);
+            var triangles = new List<Triangle>();
+
+            var ground = MeshGenerator.LoadPlaneData(
+                new Vector3(0, 0, 0),
+                new Material(new Vector3(0.2f, 0.2f, 0.2f), 0.9f),
+                10,
+                ref triangles
+            );
+
+            var monkey = new Mesh(
+                new Vector3(0, 1.5f, 0),
+                new Material(new Vector3(1, 0.7f, 0), 0f)
+            );
+
+            monkey.LoadFromObj("models/suzanne/suzanne.obj", ref triangles);
 
             scene = new Scene()
             {
-                Ambient = new Vector3(0.001f, 0.002f, 0.005f)
+                Ambient = new Vector3(0.2f, 0.3f, 0.5f)
             };
             scene.Camera = camera;
-            scene.Meshes = new Mesh[] { /*monkey.Item1*/ ground.Item1 };
-            scene.Triangles = ground.Item2;
+            scene.Meshes = new Mesh[] { ground, monkey };
+            scene.Triangles = triangles.ToArray();
             //scene.Triangles = monkey.Item2;
             scene.Objects = new GpuSphere[]
             {
@@ -86,7 +93,7 @@ namespace SimpleRaytracer.Gui
             };
 
             float pitch = 26 * (float)(Math.PI / 180);
-            float yaw = 166 * (float)(Math.PI / 180);
+            float yaw = 0 * (float)(Math.PI / 180);
             float t = 0;
 
             DateTime lastTime = DateTime.Now;
@@ -157,19 +164,19 @@ namespace SimpleRaytracer.Gui
 
                         t += deltaTime / 1000f;
 
-                        raytracer.Render(100, 10);
+                        raytracer.Render(10, 10);
 
                         raytracer.WaitForResult(ref bmp);
                         sw.Stop();
 
                         Debug.WriteLine($"Wait for result: {sw.Elapsed.TotalMilliseconds} ms");
 
-                        //Debug.WriteLine("Done");
+                        Debug.WriteLine("Done");
 
                         //Directory.CreateDirectory("renders");
                         //bmp.Save($"renders/render_{DateTime.Now.Ticks}.png");
 
-                        //Debug.WriteLine("Saved");
+                        Debug.WriteLine("Saved");
 
                         Invoke(() =>
                         {

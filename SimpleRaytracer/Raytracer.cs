@@ -76,7 +76,7 @@ namespace SimpleRaytracer
                 sampleCount,
                 bounceCount,
                 _scene,
-                0
+                false
             );
 
             _loadedKernel(Resolution.Width * Resolution.Height, _frameBuffer.View, _sceneSphereBuffer, _sceneMeshBuffer, _sceneTriangleBuffer, renderParams, (ulong)DateTime.Now.Ticks);
@@ -146,7 +146,7 @@ namespace SimpleRaytracer
                 var offsetVec = Vector2.Zero;
 
                 // Add small ray origin offset
-                if (renderParams.SimplifiedEnabled != 1)
+                if (!renderParams.SimplifiedEnabled)
                 {
                     offsetVec = GetRandomVector2InUnitSphere(ref rng) / 20000;
                 }
@@ -167,7 +167,7 @@ namespace SimpleRaytracer
                 var cameraRay = new Ray(renderParams.CameraPosition, dir);
 
                 // Accumulate received light for a given pixel
-                if (renderParams.SimplifiedEnabled != 1)
+                if (!renderParams.SimplifiedEnabled)
                 {
                     pixelColor += TraceBounces(cameraRay, objects, meshes, triangles, renderParams.Bounces, ref rng, renderParams);
                 }
@@ -205,11 +205,11 @@ namespace SimpleRaytracer
 
             for (int i = 0; i < meshes.Length; i++)
             {
-                if (meshes[i].Aabb.TestAabb(ray, out var dist) && dist < minDist)
+                if (meshes[i].SkipBoundingBoxTest || meshes[i].Aabb.TestAabb(ray, out var dist) && dist < minDist)
                 {
-                    for (int j = 0; j < triangles.Length; j++)
+                    for (int j = 0; j < meshes[i].triangleCount; j++)
                     {
-                        if (triangles[j].IntersectRayTriangle(ray, ref hit) && hit.distance < minDist)
+                        if (triangles[j + meshes[i].arrayOffset].IntersectRayTriangle(ray, ref hit) && hit.distance < minDist)
                         {
                             hit.material = meshes[i].Material;
                             closestHit = hit;

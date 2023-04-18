@@ -4,24 +4,26 @@ namespace SimpleRaytracer
 {
     public static class MeshGenerator
     {
-        public static (Mesh, Triangle[]) GetPlaneData(Vector3 position, Material material, float size = 1)
+        public static Mesh LoadPlaneData(Vector3 position, Material material, float size, ref List<Triangle> triangles)
         {
             var bl = new Vector3(-0.5f, 0, -0.5f) * size;
             var br = new Vector3(0.5f, 0, -0.5f) * size;
             var tl = new Vector3(-0.5f, 0, 0.5f) * size;
             var tr = new Vector3(0.5f, 0, 0.5f) * size;
 
-            var mesh = new Mesh(position, material, new Aabb(bl, tr));
-
-            return (mesh, new Triangle[]
+            var mesh = new Mesh(position, material)
             {
-                new Triangle(
-                    bl,tr,br
-                ),
-                 new Triangle(
-                    bl,tl,tr
-                )
-            });
+                SkipBoundingBoxTest = true
+            };
+            mesh.Aabb = new Aabb(bl, tr);
+
+            mesh.arrayOffset = triangles.Count;
+            mesh.triangleCount = 2;
+
+            triangles.Add(new(bl, tr, br));
+            triangles.Add(new(bl, tl, tr));
+
+            return mesh;
         }
     }
 }
