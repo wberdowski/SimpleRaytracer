@@ -67,7 +67,7 @@ namespace SimpleRaytracer
             _sceneTriangleBuffer.CopyFromCPU(scene.Triangles);
         }
 
-        public void Render(int sampleCount = 100, int bounceCount = 5)
+        public void Render(Vector3 sunDir, int sampleCount = 100, int bounceCount = 5)
         {
             // Start kernel execution
             var renderParams = new RenderParams(
@@ -76,8 +76,10 @@ namespace SimpleRaytracer
                 sampleCount,
                 bounceCount,
                 _scene,
-                false
+                true
             );
+
+            renderParams.SunDir = sunDir;
 
             _loadedKernel(Resolution.Width * Resolution.Height, _frameBuffer.View, _sceneSphereBuffer, _sceneMeshBuffer, _sceneTriangleBuffer, renderParams, (ulong)DateTime.Now.Ticks);
         }
@@ -254,7 +256,7 @@ namespace SimpleRaytracer
         {
             if (TryGetClosestHit(objects, meshes, triangles, ray, out var hit))
             {
-                return Clamp(hit.material.Albedo * Vector3.Dot(hit.normal, Vector3.Normalize(Vector3.One)) + hit.material.Emission);
+                return Clamp(hit.material.Albedo * Vector3.Dot(hit.normal, renderParams.SunDir) + hit.material.Emission);
             }
 
             return renderParams.Ambient;

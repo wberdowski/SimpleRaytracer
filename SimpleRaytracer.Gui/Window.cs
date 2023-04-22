@@ -164,7 +164,7 @@ namespace SimpleRaytracer.Gui
 
                         t += deltaTime / 1000f;
 
-                        raytracer.Render(10, 10);
+                        raytracer.Render(Vector3.Normalize(new Vector3((float)Math.Sin(t), 1, (float)Math.Cos(t))), 1000, 10);
 
                         raytracer.WaitForResult(ref bmp);
                         sw.Stop();

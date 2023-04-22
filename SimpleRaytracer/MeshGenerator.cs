@@ -20,8 +20,8 @@ namespace SimpleRaytracer
             mesh.arrayOffset = triangles.Count;
             mesh.triangleCount = 2;
 
-            triangles.Add(new(bl, tr, br));
-            triangles.Add(new(bl, tl, tr));
+            triangles.Add(new(bl, tr, br, Vector3.UnitY, Vector3.UnitY, Vector3.UnitY));
+            triangles.Add(new(bl, tl, tr, Vector3.UnitY, Vector3.UnitY, Vector3.UnitY));
 
             return mesh;
         }

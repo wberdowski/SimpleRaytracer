@@ -41,6 +41,7 @@ namespace SimpleRaytracer
                     if (face.Count == 3)
                     {
                         var vectors = new Vector3[3];
+                        var normals = new Vector3[3];
 
                         for (int i = 0; i < 3; i++)
                         {
@@ -48,6 +49,9 @@ namespace SimpleRaytracer
 
                             var vertexPos = result.Vertices[f.VertexIndex - 1];
                             vectors[i] = new Vector3(vertexPos.X, vertexPos.Y, vertexPos.Z) + Position;
+
+                            var normal = result.Vertices[f.VertexIndex - 1];
+                            normals[i] = new Vector3(normal.X, normal.Y, normal.Z);
 
                             if (vectors[i].X < minX)
                             {
@@ -86,7 +90,10 @@ namespace SimpleRaytracer
                             //result.Normals[v.NormalIndex - 1].Z,
                         }
 
-                        triangles.Add(new Triangle(vectors[0], vectors[1], vectors[2]));
+                        triangles.Add(new Triangle(
+                            vectors[0], vectors[1], vectors[2],
+                            normals[0], normals[1], normals[2]                            
+                            ));
                         count++;
                     }
                     else

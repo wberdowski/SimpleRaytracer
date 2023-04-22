@@ -8,22 +8,31 @@ namespace SimpleRaytracer
         public Vector3 v0;
         public Vector3 v1;
         public Vector3 v2;
-        public Vector3 n;
+        public Vector3 n0 = Vector3.Zero;
+        public Vector3 n1 = Vector3.Zero;
+        public Vector3 n2 = Vector3.Zero;
 
         public Triangle(Vector3 v0, Vector3 v1, Vector3 v2)
         {
             this.v0 = v0;
             this.v1 = v1;
             this.v2 = v2;
+        }
 
-            var ab = v1 - v0;
-            var ac = v2 - v0;
-
-            n = Vector3.Cross(ab, ac);
+        public Triangle(Vector3 v0, Vector3 v1, Vector3 v2, Vector3 n0, Vector3 n1, Vector3 n2) : this(v0, v1, v2)
+        {
+            this.n0 = n0;
+            this.n1 = n1;
+            this.n2 = n2;
         }
 
         public bool IntersectRayTriangle(Ray ray, ref Hit hit)
         {
+            var ab = v1 - v0;
+            var ac = v2 - v0;
+
+            var n = Vector3.Cross(ab, ac);
+
             var det = Vector3.Dot(-ray.Direction, n);
 
             if (det <= 0.0f)
@@ -56,9 +65,18 @@ namespace SimpleRaytracer
 
             t /= det;
 
+            var x = v / det;
+            var y = w / det;
+
+            var l1 = Vector3.Lerp(n0, n2, y * 2f);
+            var l2 = Vector3.Lerp(n0, n1, x * 2f);
+            var norm = Vector3.Normalize(Vector3.Lerp(l1, l2, 0.5f));
+
+            //hit.material = new Material(norm, 0);
+            //hit.material = new Material(new Vector3(v / det, w / det, 0), 0.5f);
             hit.position = ray.Origin + t * ray.Direction;
             hit.distance = t;
-            hit.normal = Vector3.Normalize(n);
+            hit.normal = norm;
 
             return true;
         }
