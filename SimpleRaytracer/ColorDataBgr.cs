@@ -26,5 +26,19 @@ namespace SimpleRaytracer
                 (byte)XMath.Clamp(XMath.Sqrt(pixelColor.Z * scale) * 255, 0, 255)
             );
         }
+
+        public Vector3 ToVector3()
+        {
+            return new(r, g, b);
+        }
+
+        public static ColorDataBgr FromVector3(Vector3 vector)
+        {
+            return new ColorDataBgr(
+                (byte)XMath.Clamp(vector.X, 0, 255),
+                (byte)XMath.Clamp(vector.Y, 0, 255),
+                (byte)XMath.Clamp(vector.Z, 0, 255)
+            );
+        }
     }
 }

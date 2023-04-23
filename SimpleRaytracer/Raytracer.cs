@@ -5,6 +5,7 @@ using ILGPU.Runtime;
 using ILGPU.Runtime.CPU;
 using ILGPU.Runtime.Cuda;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Numerics;
@@ -18,12 +19,15 @@ namespace SimpleRaytracer
 
         private Context _context;
         private Accelerator _accelerator;
-        private Action<Index1D, ArrayView1D<ColorDataBgr, Stride1D.Dense>, ArrayView1D<GpuSphere, Stride1D.Dense>, ArrayView1D<Mesh, Stride1D.Dense>, ArrayView1D<Triangle, Stride1D.Dense>, RenderParams, ulong> _loadedKernel;
+        private Action<Index1D, ArrayView1D<ColorDataBgr, Stride1D.Dense>, ArrayView1D<Vector3, Stride1D.Dense>, ArrayView1D<GpuSphere, Stride1D.Dense>, ArrayView1D<Mesh, Stride1D.Dense>, ArrayView1D<Triangle, Stride1D.Dense>, RenderParams, ulong> _loadedKernel;
         private MemoryBuffer1D<ColorDataBgr, Stride1D.Dense>? _frameBuffer;
+        private MemoryBuffer1D<Vector3, Stride1D.Dense>? _accumulationBuffer;
         private Scene _scene;
         private MemoryBuffer1D<GpuSphere, Stride1D.Dense>? _sceneSphereBuffer;
         private MemoryBuffer1D<Mesh, Stride1D.Dense> _sceneMeshBuffer;
         private MemoryBuffer1D<Triangle, Stride1D.Dense> _sceneTriangleBuffer;
+
+        private int count = 0;
 
         public Size Resolution { get; }
 
@@ -43,9 +47,16 @@ namespace SimpleRaytracer
 
             // Allocate frame buffer
             _frameBuffer = _accelerator.Allocate1D<ColorDataBgr>(Resolution.Width * Resolution.Height);
+            _accumulationBuffer = _accelerator.Allocate1D<Vector3>(Resolution.Width * Resolution.Height);
 
             // load / precompile the kernel
-            _loadedKernel = _accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<ColorDataBgr, Stride1D.Dense>, ArrayView1D<GpuSphere, Stride1D.Dense>, ArrayView1D<Mesh, Stride1D.Dense>, ArrayView1D<Triangle, Stride1D.Dense>, RenderParams, ulong>(Kernel);
+            _loadedKernel = _accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<ColorDataBgr, Stride1D.Dense>, ArrayView1D<Vector3, Stride1D.Dense>, ArrayView1D<GpuSphere, Stride1D.Dense>, ArrayView1D<Mesh, Stride1D.Dense>, ArrayView1D<Triangle, Stride1D.Dense>, RenderParams, ulong>(Kernel);
+        }
+
+        public void Reset()
+        {
+            count = 0;
+            _accumulationBuffer.MemSet(0);
         }
 
         public void SetScene(Scene scene)
@@ -67,8 +78,10 @@ namespace SimpleRaytracer
             _sceneTriangleBuffer.CopyFromCPU(scene.Triangles);
         }
 
-        public void Render(Vector3 sunDir, int sampleCount = 100, int bounceCount = 5)
+        public void Render(Vector3 sunDir, bool simplifiedEnabled, int sampleCount = 100, int bounceCount = 5)
         {
+            count += sampleCount;
+
             // Start kernel execution
             var renderParams = new RenderParams(
                 Resolution.Width,
@@ -76,12 +89,13 @@ namespace SimpleRaytracer
                 sampleCount,
                 bounceCount,
                 _scene,
-                true
+                simplifiedEnabled,
+                count
             );
 
             renderParams.SunDir = sunDir;
 
-            _loadedKernel(Resolution.Width * Resolution.Height, _frameBuffer.View, _sceneSphereBuffer, _sceneMeshBuffer, _sceneTriangleBuffer, renderParams, (ulong)DateTime.Now.Ticks);
+            _loadedKernel(Resolution.Width * Resolution.Height, _frameBuffer.View, _accumulationBuffer.View, _sceneSphereBuffer, _sceneMeshBuffer, _sceneTriangleBuffer, renderParams, (ulong)DateTime.Now.Ticks);
         }
 
         public Bitmap WaitForResult()
@@ -126,7 +140,7 @@ namespace SimpleRaytracer
             //_sceneSphereBuffer?.Dispose();
         }
 
-        public static void Kernel(Index1D index, ArrayView1D<ColorDataBgr, Stride1D.Dense> output, ArrayView1D<GpuSphere, Stride1D.Dense> objects, ArrayView1D<Mesh, Stride1D.Dense> meshes, ArrayView1D<Triangle, Stride1D.Dense> triangles, RenderParams renderParams, ulong rngSeed)
+        public static void Kernel(Index1D index, ArrayView1D<ColorDataBgr, Stride1D.Dense> output, ArrayView1D<Vector3, Stride1D.Dense> accumulator, ArrayView1D<GpuSphere, Stride1D.Dense> objects, ArrayView1D<Mesh, Stride1D.Dense> meshes, ArrayView1D<Triangle, Stride1D.Dense> triangles, RenderParams renderParams, ulong rngSeed)
         {
             // Get pixel position
             var x = index % renderParams.ResolutionX;
@@ -182,10 +196,11 @@ namespace SimpleRaytracer
             }
 
             // Gamma correction
-            var scale = 1f / renderParams.Samples;
+            var scale = 1f / renderParams.CurrentSampleCount;
 
             // Output calculated pixel color
-            output[index] = ColorDataBgr.GetGammaCorrected(pixelColor, scale);
+            accumulator[index] += pixelColor;
+            output[index] = ColorDataBgr.GetGammaCorrected(accumulator[index], scale);
         }
 
         public static bool TryGetClosestHit(ArrayView1D<GpuSphere, Stride1D.Dense> objects, ArrayView1D<Mesh, Stride1D.Dense> meshes, ArrayView1D<Triangle, Stride1D.Dense> triangles, Ray ray, out Hit closestHit)
@@ -309,6 +324,7 @@ namespace SimpleRaytracer
         public void Dispose()
         {
             _frameBuffer?.Dispose();
+            _accumulationBuffer?.Dispose();
             _accelerator.Dispose();
             _context.Dispose();
         }

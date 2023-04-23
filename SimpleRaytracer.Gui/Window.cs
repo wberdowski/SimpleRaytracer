@@ -26,12 +26,12 @@ namespace SimpleRaytracer.Gui
 
         private void Window_Load(object sender, EventArgs e)
         {
-            var camera = new Camera(new Vector3(0, 2.3f, -4), 0.1f, 60, outputResolution.Width / (float)outputResolution.Height);
+            var camera = new Camera(new Vector3(0, 2.3f, -2), 0.1f, 60, outputResolution.Width / (float)outputResolution.Height);
 
             var sun = new GpuSphere(
-                new Vector3(-10, 10, 0),
-                new Material(new Vector3(0, 0, 0), new Vector3(1, 1, 0.9f) * 6),
-                6f
+                new Vector3(-5, 20, 0),
+                new Material(new Vector3(0, 0, 0), new Vector3(1, 1, 0.9f) * 8),
+                4f
             );
 
             // Spheres
@@ -63,21 +63,21 @@ namespace SimpleRaytracer.Gui
 
             var ground = MeshGenerator.LoadPlaneData(
                 new Vector3(0, 0, 0),
-                new Material(new Vector3(0.2f, 0.2f, 0.2f), 0.9f),
+                new Material(new Vector3(0.4f, 0.8f, 0.1f), 0.001f),
                 10,
                 ref triangles
             );
 
             var monkey = new Mesh(
                 new Vector3(0, 1.5f, 0),
-                new Material(new Vector3(1, 0.7f, 0), 0f)
+                new Material(new Vector3(0.9f, 0.9f, 0.9f), 0.05f)
             );
 
             monkey.LoadFromObj("models/suzanne/suzanne.obj", ref triangles);
 
             scene = new Scene()
             {
-                Ambient = new Vector3(0.2f, 0.3f, 0.5f)
+                Ambient = new Vector3(0.1f, 0.2f, 0.3f) * 0.5f
             };
             scene.Camera = camera;
             scene.Meshes = new Mesh[] { ground, monkey };
@@ -123,48 +123,56 @@ namespace SimpleRaytracer.Gui
                         if ((GetAsyncKeyState(0x57) & 0x8000) > 0)
                         {
                             scene.Camera.Position = scene.Camera.Position + scene.Camera.Forward * 0.5f * deltaTime / 100f;
+                            raytracer.Reset();
                         }
 
                         if ((GetAsyncKeyState(0x53) & 0x8000) > 0)
                         {
                             scene.Camera.Position = scene.Camera.Position - scene.Camera.Forward * 0.5f * deltaTime / 100f;
+                            raytracer.Reset();
                         }
 
                         if ((GetAsyncKeyState(0x44) & 0x8000) > 0)
                         {
                             scene.Camera.Position = scene.Camera.Position + scene.Camera.Right * 0.5f * deltaTime / 100f;
+                            raytracer.Reset();
                         }
 
                         if ((GetAsyncKeyState(0x41) & 0x8000) > 0)
                         {
                             scene.Camera.Position = scene.Camera.Position - scene.Camera.Right * 0.5f * deltaTime / 100f;
+                            raytracer.Reset();
                         }
 
                         if ((GetAsyncKeyState(0x26) & 0x8000) > 0)
                         {
                             pitch += 0.2f * deltaTime / 100f;
+                            raytracer.Reset();
                         }
 
                         if ((GetAsyncKeyState(0x28) & 0x8000) > 0)
                         {
                             pitch -= 0.2f * deltaTime / 100f;
+                            raytracer.Reset();
                         }
 
                         if ((GetAsyncKeyState(0x25) & 0x8000) > 0)
                         {
                             yaw -= 0.2f * deltaTime / 100f;
+                            raytracer.Reset();
                         }
 
                         if ((GetAsyncKeyState(0x27) & 0x8000) > 0)
                         {
                             yaw += 0.2f * deltaTime / 100f;
+                            raytracer.Reset();
                         }
 
                         scene.Camera.Rotation = Quaternion.CreateFromYawPitchRoll(yaw, pitch, 0);
 
                         t += deltaTime / 1000f;
 
-                        raytracer.Render(Vector3.Normalize(new Vector3((float)Math.Sin(t), 1, (float)Math.Cos(t))), 1000, 10);
+                        raytracer.Render(Vector3.Normalize(new Vector3((float)Math.Sin(t), 1, (float)Math.Cos(t))), false, 1, 10);
 
                         raytracer.WaitForResult(ref bmp);
                         sw.Stop();
@@ -181,8 +189,9 @@ namespace SimpleRaytracer.Gui
                         Invoke(() =>
                         {
                             pictureBox.Image = bmp;
+                            pictureBox.Invalidate();
                         });
-                        Thread.Sleep(10);
+                        //Thread.Sleep(10);
                     }
 
                 }

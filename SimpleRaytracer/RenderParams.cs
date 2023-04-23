@@ -18,8 +18,9 @@ namespace SimpleRaytracer
         public Vector3 Ambient { get; }
         public GpuBool SimplifiedEnabled { get; }
         public Vector3 SunDir { get; set; } = Vector3.One;
+        public int CurrentSampleCount { get; set; }
 
-        public RenderParams(int resolutionX, int resolutionY, int samples, int bounces, Scene scene, GpuBool simplifiedEnabled)
+        public RenderParams(int resolutionX, int resolutionY, int samples, int bounces, Scene scene, GpuBool simplifiedEnabled, int currentSampleCount)
         {
             if (scene is null)
             {
@@ -44,6 +45,7 @@ namespace SimpleRaytracer
             CameraForward = scene.Camera.Forward;
             Ambient = scene.Ambient;
             SimplifiedEnabled = simplifiedEnabled;
+            CurrentSampleCount = currentSampleCount;
         }
     }
 }

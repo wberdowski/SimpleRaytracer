@@ -68,15 +68,15 @@ namespace SimpleRaytracer
             var x = v / det;
             var y = w / det;
 
-            var l1 = Vector3.Lerp(n0, n2, y * 2f);
-            var l2 = Vector3.Lerp(n0, n1, x * 2f);
-            var norm = Vector3.Normalize(Vector3.Lerp(l1, l2, 0.5f));
+            //var l1 = Vector3.Lerp(n0, n2, y * 2f);
+            //var l2 = Vector3.Lerp(n0, n1, x * 2f);
+            //var norm = Vector3.Normalize(Vector3.Lerp(l1, l2, 0.5f));
 
             //hit.material = new Material(norm, 0);
             //hit.material = new Material(new Vector3(v / det, w / det, 0), 0.5f);
             hit.position = ray.Origin + t * ray.Direction;
             hit.distance = t;
-            hit.normal = norm;
+            hit.normal = Vector3.Normalize(n);
 
             return true;
         }
